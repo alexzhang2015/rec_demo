@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜你喜欢 - 星巴克风格菜单Demo</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- 头部 -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">☕</div>
+                <span class="logo-text">猜你喜欢</span>
+            </div>
+            <div class="user-section">
+                <div class="user-avatar">G</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主容器 -->
+    <main class="container">
+        <!-- 用户偏好设置 -->
+        <div class="preference-panel">
+            <h3>告诉我们你的喜好，获取更精准推荐</h3>
+            <div class="preference-tags" id="preference-tags">
+                <!-- 动态渲染 -->
+            </div>
+        </div>
+
+        <!-- 猜你喜欢 -->
+        <section>
+            <div class="section-title">
+                <h2>猜你喜欢</h2>
+                <a href="javascript:void(0)" class="view-all" onclick="refreshRecommendations()">换一批 →</a>
+            </div>
+            <div class="recommendation-grid" id="recommendation-grid">
+                <!-- 动态渲染推荐 -->
+            </div>
+        </section>
+
+        <!-- 分类菜单 -->
+        <section>
+            <div class="section-title">
+                <h2>全部菜单</h2>
+            </div>
+            <div class="category-tabs" id="category-tabs">
+                <!-- 动态渲染分类 -->
+            </div>
+            <div class="recommendation-grid" id="menu-grid">
+                <!-- 动态渲染菜单 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 客制化弹窗 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">产品名称</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- 杯型 -->
+                <div class="customization-section" id="size-section">
+                    <span class="customization-label">选择杯型</span>
+                    <div class="customization-options" id="size-options">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+
+                <!-- 温度 -->
+                <div class="customization-section" id="temp-section">
+                    <span class="customization-label">选择温度</span>
+                    <div class="customization-options" id="temp-options">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+
+                <!-- 糖度 -->
+                <div class="customization-section">
+                    <span class="customization-label">选择糖度</span>
+                    <div class="customization-options" id="sugar-options">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+
+                <!-- 奶类 -->
+                <div class="customization-section">
+                    <span class="customization-label">选择奶类</span>
+                    <div class="customization-options" id="milk-options">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+
+                <!-- 糖浆 -->
+                <div class="customization-section">
+                    <span class="customization-label">添加糖浆</span>
+                    <div class="customization-options" id="syrup-options">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+
+                <!-- 额外选项 -->
+                <div class="customization-section">
+                    <span class="customization-label">其他选项</span>
+                    <div class="extras-list" id="extras-options">
+                        <!-- 动态渲染 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div>
+                    <span style="color: #888; font-size: 14px;">合计</span>
+                    <span class="total-price" id="total-price">32</span>
+                </div>
+                <button class="add-to-cart-btn" onclick="addToCart()">加入购物车</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedding增强推荐 Demo - 真实LLM API</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* 额外样式 */
+        .demo-header {
+            background: linear-gradient(135deg, var(--starbucks-green) 0%, var(--starbucks-light-green) 100%);
+            color: white;
+            padding: 40px 24px;
+            text-align: center;
+        }
+
+        .demo-header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .demo-header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 24px;
+            height: fit-content;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--starbucks-light-green);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title::before {
+            content: '🎯';
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .persona-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .persona-card {
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .persona-card:hover {
+            border-color: var(--starbucks-green);
+        }
+
+        .persona-card.selected {
+            border-color: var(--starbucks-green);
+            background-color: rgba(0, 112, 74, 0.1);
+        }
+
+        .persona-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .persona-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .custom-tags-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .custom-tags-input:focus {
+            outline: none;
+            border-color: var(--starbucks-green);
+        }
+
+        .context-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .context-chip {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .context-chip:hover {
+            border-color: var(--starbucks-green);
+        }
+
+        .context-chip.selected {
+            background-color: var(--starbucks-green);
+            border-color: var(--starbucks-green);
+            color: white;
+        }
+
+        .recommend-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--starbucks-green) 0%, #00563B 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .recommend-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 112, 74, 0.3);
+        }
+
+        .recommend-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 结果区域 */
+        .result-area {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* 推理过程可视化 */
+        .reasoning-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .reasoning-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--starbucks-light-green);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reasoning-title::before {
+            content: '🧠';
+        }
+
+        .reasoning-steps {
+            position: relative;
+        }
+
+        .reasoning-step {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px dashed #eee;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.4s ease;
+        }
+
+        .reasoning-step.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .reasoning-step:last-child {
+            border-bottom: none;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: var(--starbucks-green);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .step-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .step-duration {
+            font-size: 12px;
+            color: var(--starbucks-gold);
+            background: rgba(203, 162, 88, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .step-model {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .step-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .step-details {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .step-details pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* 用户画像卡片 */
+        .profile-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .profile-info h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .profile-info p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .profile-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .keyword-tag {
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        /* 推荐结果 */
+        .recommendations-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .recommendations-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--starbucks-light-green);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recommendations-title::before {
+            content: '✨';
+        }
+
+        .recommendation-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .rec-card {
+            border: 1px solid #eee;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .rec-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .rec-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-4px);
+        }
+
+        .rec-card-header {
+            background: linear-gradient(135deg, var(--starbucks-green) 0%, var(--starbucks-light-green) 100%);
+            color: white;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rec-icon {
+            font-size: 32px;
+        }
+
+        .rec-info h4 {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .rec-info p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .rec-score {
+            margin-left: auto;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .rec-card-body {
+            padding: 16px;
+        }
+
+        .rec-reason {
+            background: #FFF8E7;
+            border-left: 3px solid var(--starbucks-gold);
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #8B6914;
+        }
+
+        .rec-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rec-price {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+        }
+
+        .rec-price::before {
+            content: '¥';
+            font-size: 14px;
+        }
+
+        .rec-tags {
+            display: flex;
+            gap: 4px;
+        }
+
+        .rec-tag {
+            padding: 2px 8px;
+            background: var(--starbucks-cream);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* 指标面板 */
+        .metrics-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .metric-item {
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* LLM信息面板 */
+        .llm-info-panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .llm-info-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .llm-info-header h4 {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .llm-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .llm-badge.openai {
+            background: #10a37f;
+        }
+
+        .llm-badge.anthropic {
+            background: #d97706;
+        }
+
+        .llm-badge.fallback {
+            background: #6b7280;
+        }
+
+        .llm-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+        }
+
+        .llm-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .llm-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .llm-stat-label {
+            opacity: 0.7;
+        }
+
+        /* 加载动画 */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            font-size: 16px;
+            color: var(--starbucks-green);
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="demo-header">
+        <h1>🤖 Embedding增强推荐系统</h1>
+        <p>基于大模型的语义理解与向量检索，实现智能个性化推荐</p>
+    </div>
+
+    <div class="demo-container">
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="panel-title">用户模拟器</div>
+
+            <div class="form-group">
+                <label class="form-label">选择用户画像</label>
+                <div class="persona-grid" id="persona-grid">
+                    <!-- 动态渲染 -->
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">自定义偏好标签（用空格分隔）</label>
+                <input type="text" class="custom-tags-input" id="custom-tags"
+                    placeholder="例如: 低糖 提神 网红">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">场景上下文</label>
+                <div class="context-options" id="context-options">
+                    <span class="context-chip" data-key="time_of_day" data-value="morning">☀️ 早晨</span>
+                    <span class="context-chip" data-key="time_of_day" data-value="afternoon">🌤️ 下午</span>
+                    <span class="context-chip" data-key="time_of_day" data-value="evening">🌙 晚上</span>
+                    <span class="context-chip" data-key="weather" data-value="hot">🔥 炎热</span>
+                    <span class="context-chip" data-key="weather" data-value="cold">❄️ 寒冷</span>
+                    <span class="context-chip" data-key="location" data-value="office">🏢 办公区</span>
+                    <span class="context-chip" data-key="location" data-value="mall">🛍️ 商场</span>
+                </div>
+            </div>
+
+            <button class="recommend-btn" id="recommend-btn" onclick="runRecommendation()">
+                🚀 开始推荐
+            </button>
+        </div>
+
+        <!-- 结果区域 -->
+        <div class="result-area" id="result-area">
+            <div class="empty-state">
+                <div class="empty-state-icon">☕</div>
+                <h3>选择用户画像开始体验</h3>
+                <p>观察大模型如何理解用户需求并生成个性化推荐</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loading-text">正在生成用户画像...</div>
+    </div>
+
+    <script>
+        // 状态管理
+        const state = {
+            personas: [],
+            selectedPersona: null,
+            customTags: [],
+            context: {},
+            result: null
+        };
+
+        // 用户画像图标映射
+        const personaIcons = {
+            "健康达人": "🥗",
+            "咖啡重度用户": "☕",
+            "甜品爱好者": "🍰",
+            "尝鲜派": "🎉",
+            "实用主义": "💼",
+            "养生白领": "🧘"
+        };
+
+        // 初始化
+        async function init() {
+            // 加载用户画像类型
+            const resp = await fetch('/api/embedding/personas');
+            const data = await resp.json();
+            state.personas = data.personas;
+            renderPersonas();
+
+            // 绑定上下文选择事件
+            document.querySelectorAll('.context-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const key = chip.dataset.key;
+                    const value = chip.dataset.value;
+
+                    // 同一组只能选一个
+                    document.querySelectorAll(`.context-chip[data-key="${key}"]`).forEach(c => {
+                        c.classList.remove('selected');
+                    });
+
+                    if (state.context[key] === value) {
+                        delete state.context[key];
+                    } else {
+                        chip.classList.add('selected');
+                        state.context[key] = value;
+                    }
+                });
+            });
+        }
+
+        // 渲染用户画像选择
+        function renderPersonas() {
+            const grid = document.getElementById('persona-grid');
+            grid.innerHTML = state.personas.map(p => `
+                <div class="persona-card" data-type="${p.type}" onclick="selectPersona('${p.type}')">
+                    <div class="persona-icon">${personaIcons[p.type] || '👤'}</div>
+                    <div class="persona-name">${p.type}</div>
+                </div>
+            `).join('');
+        }
+
+        // 选择用户画像
+        function selectPersona(type) {
+            state.selectedPersona = type;
+            document.querySelectorAll('.persona-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.type === type);
+            });
+        }
+
+        // 执行推荐
+        async function runRecommendation() {
+            if (!state.selectedPersona) {
+                alert('请先选择用户画像');
+                return;
+            }
+
+            const btn = document.getElementById('recommend-btn');
+            const loading = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+
+            // 获取自定义标签
+            const customTagsInput = document.getElementById('custom-tags').value;
+            const customTags = customTagsInput ? customTagsInput.split(/\s+/).filter(t => t) : null;
+
+            try {
+                // 模拟加载步骤
+                const steps = [
+                    '正在分析用户画像...',
+                    '生成用户向量表示...',
+                    '执行向量相似度检索...',
+                    '应用业务规则重排...',
+                    '生成个性化推荐理由...'
+                ];
+
+                let stepIndex = 0;
+                const stepInterval = setInterval(() => {
+                    if (stepIndex < steps.length) {
+                        loadingText.textContent = steps[stepIndex];
+                        stepIndex++;
+                    }
+                }, 300);
+
+                // 发送请求
+                const resp = await fetch('/api/embedding/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        persona_type: state.selectedPersona,
+                        custom_tags: customTags,
+                        context: Object.keys(state.context).length > 0 ? state.context : null,
+                        top_k: 6
+                    })
+                });
+
+                const result = await resp.json();
+                state.result = result;
+
+                clearInterval(stepInterval);
+                loading.classList.remove('active');
+
+                // 渲染结果
+                renderResult(result);
+
+            } catch (error) {
+                console.error('推荐请求失败:', error);
+                loading.classList.remove('active');
+                alert('推荐请求失败，请重试');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 获取LLM Provider的显示名称和样式
+        function getLLMProviderInfo(provider) {
+            const providers = {
+                'openai': { name: 'OpenAI', icon: '🤖', class: 'openai' },
+                'anthropic': { name: 'Claude', icon: '🧠', class: 'anthropic' },
+                'fallback': { name: '模拟器', icon: '⚙️', class: 'fallback' },
+                'FallbackProvider': { name: '模拟器', icon: '⚙️', class: 'fallback' }
+            };
+            return providers[provider] || { name: provider, icon: '🔧', class: 'fallback' };
+        }
+
+        // 渲染结果
+        function renderResult(result) {
+            const area = document.getElementById('result-area');
+            const llmInfo = result.llm_info || {};
+            const providerInfo = getLLMProviderInfo(llmInfo.provider);
+
+            area.innerHTML = `
+                <!-- LLM信息面板 -->
+                <div class="llm-info-panel">
+                    <div class="llm-info-header">
+                        <span>${providerInfo.icon}</span>
+                        <h4>LLM Provider</h4>
+                        <span class="llm-badge ${providerInfo.class}">${providerInfo.name}</span>
+                        <span style="opacity: 0.6; font-size: 12px; margin-left: auto;">${llmInfo.model || 'N/A'}</span>
+                    </div>
+                    <div class="llm-stats">
+                        <div class="llm-stat">
+                            <span class="llm-stat-value">${llmInfo.total_llm_calls || 0}</span>
+                            <span class="llm-stat-label">API调用次数</span>
+                        </div>
+                        <div class="llm-stat">
+                            <span class="llm-stat-value">${result.metrics.total_time_ms}</span>
+                            <span class="llm-stat-label">总耗时(ms)</span>
+                        </div>
+                        <div class="llm-stat">
+                            <span class="llm-stat-value">${result.recommendations.filter(r => r.llm_generated).length}</span>
+                            <span class="llm-stat-label">LLM生成理由</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 指标面板 -->
+                <div class="metrics-panel">
+                    <div class="metric-item">
+                        <div class="metric-value">${result.metrics.total_time_ms}</div>
+                        <div class="metric-label">总耗时 (ms)</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${result.metrics.candidates_evaluated}</div>
+                        <div class="metric-label">评估商品数</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${(result.metrics.avg_match_score * 100).toFixed(1)}%</div>
+                        <div class="metric-label">平均匹配度</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${result.metrics.final_recommendations}</div>
+                        <div class="metric-label">推荐结果</div>
+                    </div>
+                </div>
+
+                <!-- 用户画像 -->
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="profile-avatar">${personaIcons[result.user_profile.persona_type] || '👤'}</div>
+                        <div class="profile-info">
+                            <h3>${result.user_profile.persona_type}</h3>
+                            <p>${result.user_profile.description}</p>
+                        </div>
+                    </div>
+                    <div class="profile-keywords">
+                        ${result.user_profile.keywords.map(k => `<span class="keyword-tag">${k}</span>`).join('')}
+                    </div>
+                </div>
+
+                <!-- 推理过程 -->
+                <div class="reasoning-section">
+                    <div class="reasoning-title">推理过程可视化</div>
+                    <div class="reasoning-steps" id="reasoning-steps">
+                        ${result.reasoning_steps.map(step => `
+                            <div class="reasoning-step" data-step="${step.step}">
+                                <div class="step-number">${step.step}</div>
+                                <div class="step-content">
+                                    <div class="step-header">
+                                        <span class="step-name">${step.name}</span>
+                                        <span class="step-duration">${step.duration_ms}ms</span>
+                                    </div>
+                                    <div class="step-model">模型: ${step.model}</div>
+                                    <div class="step-description">${step.description}</div>
+                                    <div class="step-details">
+                                        <pre>${JSON.stringify(step.output, null, 2)}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 推荐结果 -->
+                <div class="recommendations-section">
+                    <div class="recommendations-title">为您推荐</div>
+                    <div class="recommendation-list" id="recommendation-list">
+                        ${result.recommendations.map((rec, index) => `
+                            <div class="rec-card" data-index="${index}">
+                                <div class="rec-card-header">
+                                    <span class="rec-icon">${getCategoryIcon(rec.item.category)}</span>
+                                    <div class="rec-info">
+                                        <h4>${rec.item.name}</h4>
+                                        <p>${rec.item.english_name}</p>
+                                    </div>
+                                    <span class="rec-score">${(rec.match_score * 100).toFixed(0)}%</span>
+                                </div>
+                                <div class="rec-card-body">
+                                    <div class="rec-reason">💡 ${rec.reason}</div>
+                                    <div class="rec-meta">
+                                        <span class="rec-price">${rec.item.base_price}</span>
+                                        <div class="rec-tags">
+                                            ${rec.item.is_new ? '<span class="rec-tag" style="background:#E63946;color:white;">新品</span>' : ''}
+                                            ${rec.item.is_seasonal ? '<span class="rec-tag" style="background:#CBA258;color:white;">限定</span>' : ''}
+                                            ${rec.item.tags.slice(0, 2).map(t => `<span class="rec-tag">${t}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            // 动画效果
+            setTimeout(() => {
+                document.querySelectorAll('.reasoning-step').forEach((el, i) => {
+                    setTimeout(() => el.classList.add('visible'), i * 200);
+                });
+            }, 100);
+
+            setTimeout(() => {
+                document.querySelectorAll('.rec-card').forEach((el, i) => {
+                    setTimeout(() => el.classList.add('visible'), i * 150);
+                });
+            }, result.reasoning_steps.length * 200 + 300);
+        }
+
+        // 获取分类图标
+        function getCategoryIcon(category) {
+            const icons = {
+                '咖啡': '☕',
+                '茶饮': '🍵',
+                '星冰乐': '🧊',
+                '清爽系列': '🍹',
+                '食品': '🥐'
+            };
+            return icons[category] || '☕';
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

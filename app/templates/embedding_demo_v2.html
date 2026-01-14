@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能推荐V2 - A/B测试 & 个性化</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        :root {
+            --starbucks-green: #00704a;
+            --starbucks-light-green: #1e3932;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+        }
+
+        .demo-header {
+            background: linear-gradient(135deg, var(--starbucks-green) 0%, var(--starbucks-light-green) 100%);
+            color: white;
+            padding: 30px 24px;
+            text-align: center;
+        }
+
+        .demo-header h1 { font-size: 28px; margin-bottom: 8px; }
+        .demo-header p { opacity: 0.9; font-size: 14px; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .demo-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .demo-container { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--starbucks-green);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 13px; font-weight: 500; color: #666; margin-bottom: 6px; }
+
+        .persona-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+        .persona-card {
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .persona-card:hover { border-color: var(--starbucks-green); }
+        .persona-card.selected { border-color: var(--starbucks-green); background: rgba(0,112,74,0.1); }
+        .persona-card .emoji { font-size: 24px; display: block; margin-bottom: 4px; }
+
+        .toggle-group { display: flex; flex-direction: column; gap: 10px; }
+
+        .toggle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f8f8f8;
+            border-radius: 8px;
+        }
+
+        .toggle-item label { font-size: 13px; color: #333; }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #ccc;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider { background: var(--starbucks-green); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        .btn-recommend {
+            width: 100%;
+            padding: 14px;
+            background: var(--starbucks-green);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-recommend:hover { background: var(--starbucks-light-green); }
+        .btn-recommend:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* 主内容区 */
+        .main-content { min-height: 600px; }
+
+        .experiment-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .experiment-banner .title { font-weight: 600; margin-bottom: 6px; }
+        .experiment-banner .variants { display: flex; gap: 12px; flex-wrap: wrap; }
+        .experiment-banner .variant-tag {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .rec-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .rec-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+        .rec-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .rec-card-title { font-size: 16px; font-weight: 600; color: #333; }
+        .rec-card-category { font-size: 12px; color: #888; margin-top: 2px; }
+
+        .match-score {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+        }
+
+        .score-breakdown {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .score-row:last-child { border-bottom: none; }
+        .score-row .label { color: #666; }
+        .score-row .value { font-weight: 600; color: #333; }
+        .score-row .value.boost { color: #22c55e; }
+        .score-row .value.penalty { color: #ef4444; }
+
+        .rec-reason {
+            font-size: 13px;
+            color: #555;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0,112,74,0.05);
+            border-radius: 8px;
+            border-left: 3px solid var(--starbucks-green);
+        }
+
+        .matched-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .keyword-tag {
+            padding: 3px 8px;
+            background: rgba(0,112,74,0.1);
+            color: var(--starbucks-green);
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .feedback-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .feedback-btn:hover { background: #f5f5f5; }
+        .feedback-btn.like:hover { background: #dcfce7; border-color: #22c55e; }
+        .feedback-btn.dislike:hover { background: #fee2e2; border-color: #ef4444; }
+        .feedback-btn.clicked { background: #dcfce7; border-color: #22c55e; }
+
+        /* 右侧面板 */
+        .side-panel { position: sticky; top: 20px; height: fit-content; }
+
+        .session-info {
+            padding: 12px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 12px;
+        }
+
+        .session-info .title { font-weight: 600; color: #0369a1; margin-bottom: 6px; }
+
+        .realtime-prefs {
+            margin-top: 16px;
+        }
+
+        .pref-section { margin-bottom: 12px; }
+        .pref-section .label { font-size: 12px; color: #888; margin-bottom: 6px; }
+
+        .pref-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+        .pref-tag {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .pref-tag.liked { background: #dcfce7; color: #166534; }
+        .pref-tag.disliked { background: #fee2e2; color: #991b1b; }
+
+        .explanation-panel {
+            margin-top: 16px;
+            padding: 12px;
+            background: #fefce8;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .explanation-panel .title { font-weight: 600; color: #854d0e; margin-bottom: 8px; }
+
+        .factor-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .factor-item:last-child { border-bottom: none; }
+
+        .factor-bar {
+            flex: 1;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .factor-bar-fill {
+            height: 100%;
+            background: var(--starbucks-green);
+            border-radius: 3px;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: #888;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #eee;
+            border-top-color: var(--starbucks-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .stats-card {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+
+        .stats-row .label { color: #666; }
+        .stats-row .value { font-weight: 600; }
+
+        /* 订单对比演示样式 */
+        .comparison-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .comparison-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-simulate {
+            padding: 10px 20px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-simulate:hover { background: #d97706; }
+        .btn-simulate:disabled { background: #ccc; cursor: not-allowed; }
+
+        .btn-compare {
+            padding: 10px 20px;
+            background: var(--starbucks-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-compare:hover { background: var(--starbucks-light-green); }
+        .btn-compare:disabled { background: #ccc; cursor: not-allowed; }
+
+        .order-status {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .order-status.has-orders {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+
+        .comparison-column {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .comparison-column-title {
+            font-size: 15px;
+            font-weight: 600;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-column-title.old-user {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534;
+        }
+
+        .comparison-column-title.new-user {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            color: #3730a3;
+        }
+
+        .comparison-item {
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .comparison-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .comparison-item-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .comparison-item-score {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .comparison-item-score.boosted {
+            color: #22c55e;
+        }
+
+        .comparison-item-score.normal {
+            color: #6366f1;
+        }
+
+        .boost-detail {
+            background: #f0fdf4;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+
+        .boost-detail .factor {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .boost-detail .factor .label { color: #666; }
+        .boost-detail .factor .value { font-weight: 600; color: #166534; }
+
+        .boost-explanation {
+            font-size: 12px;
+            color: #15803d;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .comparison-summary {
+            background: rgba(255,255,255,0.9);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .comparison-summary h4 {
+            margin: 0 0 10px 0;
+            color: #92400e;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .summary-stat {
+            text-align: center;
+        }
+
+        .summary-stat .number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+        }
+
+        .summary-stat .label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 客制化相关样式 */
+        .customization-section {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .customization-section .title {
+            font-weight: 600;
+            color: #0369a1;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .customization-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            color: #0c4a6e;
+        }
+
+        .customization-item .label { color: #64748b; }
+        .customization-item .value { font-weight: 500; }
+
+        .customization-reason {
+            font-size: 11px;
+            color: #0369a1;
+            margin-top: 6px;
+            font-style: italic;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(3,105,161,0.3);
+        }
+
+        .customization-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .customization-keyword {
+            padding: 3px 8px;
+            background: rgba(3,105,161,0.15);
+            color: #0369a1;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .confidence-high { background: #dcfce7; color: #166534; }
+        .confidence-medium { background: #fef3c7; color: #92400e; }
+        .confidence-low { background: #fee2e2; color: #991b1b; }
+
+        /* 预设管理样式 */
+        .preset-section {
+            background: linear-gradient(135deg, #fae8ff 0%, #e9d5ff 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .preset-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #7e22ce;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preset-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-preset {
+            padding: 8px 16px;
+            background: #9333ea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-preset:hover { background: #7e22ce; }
+        .btn-preset:disabled { background: #ccc; cursor: not-allowed; }
+
+        .preset-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .preset-card {
+            background: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .preset-card .name { font-weight: 600; color: #7e22ce; margin-bottom: 4px; }
+        .preset-card .options { color: #666; font-size: 11px; }
+
+        /* 客制化偏好面板样式 */
+        .cust-prefs-panel {
+            margin-top: 16px;
+            padding: 12px;
+            background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+            border-radius: 8px;
+        }
+
+        .cust-prefs-panel .title {
+            font-weight: 600;
+            color: #0d9488;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .cust-pref-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 11px;
+        }
+
+        .cust-pref-item .label { color: #5eead4; font-weight: 500; }
+        .cust-pref-item .value { color: #0d9488; font-weight: 600; }
+
+        /* 自定义偏好输入 */
+        .custom-preference-section {
+            margin-top: 16px;
+            padding: 12px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 8px;
+        }
+
+        .custom-preference-section .title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .custom-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .custom-input-group input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #d97706;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .custom-input-group input:focus {
+            border-color: #92400e;
+            box-shadow: 0 0 0 2px rgba(217,119,6,0.2);
+        }
+
+        .btn-custom-search {
+            padding: 10px 16px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .btn-custom-search:hover { background: #d97706; }
+
+        .hint-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .hint-tag {
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid #d97706;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #92400e;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .hint-tag:hover {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* 购物车样式 */
+        .cart-section {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cart-title {
+            font-weight: 600;
+            color: var(--starbucks-green);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cart-badge {
+            background: var(--starbucks-green);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        .btn-clear-cart {
+            padding: 4px 10px;
+            background: transparent;
+            border: 1px solid #dc2626;
+            color: #dc2626;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .btn-clear-cart:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .cart-items {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .cart-item-info {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .cart-item-customization {
+            font-size: 10px;
+            color: #666;
+        }
+
+        .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cart-item-qty button {
+            width: 22px;
+            height: 22px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .cart-item-qty button:hover {
+            background: #f5f5f5;
+        }
+
+        .cart-item-qty span {
+            min-width: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .cart-item-price {
+            font-weight: 600;
+            color: var(--starbucks-green);
+        }
+
+        .cart-item-remove {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: #fee2e2;
+            color: #dc2626;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .cart-item-remove:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .cart-footer {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,112,74,0.2);
+        }
+
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .cart-total-label {
+            color: #666;
+        }
+
+        .cart-total-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+        }
+
+        .btn-checkout {
+            width: 100%;
+            padding: 12px;
+            background: var(--starbucks-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-checkout:hover { background: var(--starbucks-light-green); }
+        .btn-checkout:disabled { background: #ccc; cursor: not-allowed; }
+
+        .cart-empty {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 13px;
+        }
+
+        /* 添加到购物车按钮 */
+        .btn-add-cart {
+            flex: 1;
+            padding: 8px;
+            background: var(--starbucks-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .btn-add-cart:hover {
+            background: var(--starbucks-light-green);
+        }
+
+        .btn-add-cart.added {
+            background: #22c55e;
+        }
+
+        /* 订单成功弹窗 */
+        .order-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .order-modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            max-width: 400px;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .order-modal-icon {
+            font-size: 60px;
+            margin-bottom: 16px;
+        }
+
+        .order-modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+            margin-bottom: 8px;
+        }
+
+        .order-modal-id {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+
+        .order-modal-items {
+            text-align: left;
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .order-modal-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--starbucks-green);
+            margin-bottom: 16px;
+        }
+
+        .btn-close-modal {
+            padding: 12px 30px;
+            background: var(--starbucks-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* 实时刷新提示 */
+        .refresh-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--starbucks-green);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .refresh-indicator.hidden {
+            animation: slideOut 0.3s ease forwards;
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header class="demo-header">
+        <h1>智能推荐系统 V2</h1>
+        <p>A/B测试 | 用户行为 | Session个性化 | 客制化推荐 | 解释性增强</p>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px;">
+            <span class="badge">OpenAI Embedding + GPT-4o-mini</span>
+            <a href="/presentation" class="badge" style="text-decoration: none; background: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.3)'">
+                📊 查看技术方案PPT
+            </a>
+        </div>
+    </header>
+
+    <div class="demo-container">
+        <!-- 左侧控制面板 -->
+        <div class="panel control-panel">
+            <div class="panel-title">配置选项</div>
+
+            <div class="form-group">
+                <label class="form-label">选择用户画像</label>
+                <div class="persona-grid" id="personaGrid">
+                    <div class="persona-card selected" data-persona="健康达人">
+                        <span class="emoji">🥗</span>
+                        <span>健康达人</span>
+                    </div>
+                    <div class="persona-card" data-persona="咖啡重度用户">
+                        <span class="emoji">☕</span>
+                        <span>咖啡达人</span>
+                    </div>
+                    <div class="persona-card" data-persona="甜品爱好者">
+                        <span class="emoji">🍰</span>
+                        <span>甜品控</span>
+                    </div>
+                    <div class="persona-card" data-persona="尝鲜派">
+                        <span class="emoji">✨</span>
+                        <span>尝鲜派</span>
+                    </div>
+                    <div class="persona-card" data-persona="实用主义">
+                        <span class="emoji">💼</span>
+                        <span>实用派</span>
+                    </div>
+                    <div class="persona-card" data-persona="养生白领">
+                        <span class="emoji">🧘</span>
+                        <span>养生白领</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">功能开关</label>
+                <div class="toggle-group">
+                    <div class="toggle-item">
+                        <label>A/B测试</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableABTest" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    <div class="toggle-item">
+                        <label>历史行为加权</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableBehavior" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    <div class="toggle-item">
+                        <label>Session个性化</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableSession" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    <div class="toggle-item">
+                        <label>解释性增强</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableExplainability" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    <div class="toggle-item" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);">
+                        <label style="color: #0369a1; font-weight: 600;">🎨 客制化推荐</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableCustomization" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自定义偏好输入 -->
+            <div class="custom-preference-section">
+                <div class="title">🔍 或者，描述您想要的饮品</div>
+                <div class="custom-input-group">
+                    <input type="text" id="customPreference" placeholder="例如：低卡、提神、冰爽的饮品" maxlength="100">
+                    <button class="btn-custom-search" id="btnCustomSearch">智能匹配</button>
+                </div>
+                <div class="hint-tags">
+                    <span class="hint-tag" onclick="addHint('低卡')">低卡</span>
+                    <span class="hint-tag" onclick="addHint('提神')">提神</span>
+                    <span class="hint-tag" onclick="addHint('甜蜜')">甜蜜</span>
+                    <span class="hint-tag" onclick="addHint('冰爽')">冰爽</span>
+                    <span class="hint-tag" onclick="addHint('植物奶')">植物奶</span>
+                    <span class="hint-tag" onclick="addHint('无咖啡因')">无咖啡因</span>
+                </div>
+            </div>
+
+            <button class="btn-recommend" id="btnRecommend">获取推荐</button>
+
+            <div class="stats-card" id="metricsCard" style="display: none;">
+                <div class="stats-row">
+                    <span class="label">总耗时</span>
+                    <span class="value" id="metricTime">-</span>
+                </div>
+                <div class="stats-row">
+                    <span class="label">LLM调用</span>
+                    <span class="value" id="metricLLM">-</span>
+                </div>
+                <div class="stats-row">
+                    <span class="label">平均匹配度</span>
+                    <span class="value" id="metricScore">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content panel">
+            <!-- 客制化预设演示 -->
+            <div class="preset-section" id="presetSection">
+                <div class="preset-title">
+                    🎨 客制化预设管理
+                </div>
+                <div class="preset-controls">
+                    <button class="btn-preset" id="btnCreatePreset">
+                        ➕ 创建预设
+                    </button>
+                    <button class="btn-preset" id="btnLoadPresets" style="background: #7e22ce;">
+                        📋 加载我的预设
+                    </button>
+                    <div class="order-status" id="presetStatus" style="background: rgba(255,255,255,0.8);">
+                        创建预设以快速应用您的偏好设置
+                    </div>
+                </div>
+                <div class="preset-list" id="presetList"></div>
+            </div>
+
+            <!-- 订单历史对比演示 -->
+            <div class="comparison-section" id="comparisonSection">
+                <div class="comparison-title">
+                    📊 订单历史权重对比演示
+                </div>
+                <div class="comparison-controls">
+                    <button class="btn-simulate" id="btnSimulateOrders">
+                        🎲 模拟生成订单历史
+                    </button>
+                    <button class="btn-compare" id="btnCompare">
+                        ⚡ 对比推荐效果
+                    </button>
+                    <div class="order-status" id="orderStatus">
+                        暂无模拟订单
+                    </div>
+                </div>
+                <div class="comparison-grid" id="comparisonGrid" style="display: none;">
+                    <!-- 左侧：有订单历史用户 -->
+                    <div class="comparison-column">
+                        <div class="comparison-column-title old-user">
+                            👤 老用户 (有订单历史)
+                            <span id="oldUserOrderCount" style="font-weight: normal; font-size: 12px;"></span>
+                        </div>
+                        <div id="oldUserRecs"></div>
+                    </div>
+                    <!-- 右侧：新用户 -->
+                    <div class="comparison-column">
+                        <div class="comparison-column-title new-user">
+                            🆕 新用户 (无订单历史)
+                        </div>
+                        <div id="newUserRecs"></div>
+                    </div>
+                </div>
+                <div class="comparison-summary" id="comparisonSummary" style="display: none;">
+                    <h4>对比结论</h4>
+                    <div class="summary-stats" id="summaryStats"></div>
+                </div>
+            </div>
+
+            <div class="panel-title">推荐结果</div>
+
+            <div id="experimentBanner" class="experiment-banner" style="display: none;">
+                <div class="title">A/B实验分组</div>
+                <div class="variants" id="experimentVariants"></div>
+            </div>
+
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p style="margin-top: 16px;">正在生成个性化推荐...</p>
+            </div>
+
+            <div id="recommendationsGrid" class="recommendations-grid">
+                <div style="text-align: center; padding: 60px; color: #888;">
+                    <p>选择用户画像并点击「获取推荐」</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div class="panel side-panel">
+            <div class="panel-title">Session状态</div>
+
+            <div class="session-info">
+                <div class="title">当前会话</div>
+                <div>Session ID: <span id="sessionId">-</span></div>
+                <div>User ID: <span id="userId">-</span></div>
+                <div>交互次数: <span id="interactionCount">0</span></div>
+            </div>
+
+            <div class="realtime-prefs">
+                <div class="pref-section">
+                    <div class="label">实时喜好标签</div>
+                    <div class="pref-tags" id="likedTags">
+                        <span style="color: #888; font-size: 11px;">暂无</span>
+                    </div>
+                </div>
+                <div class="pref-section">
+                    <div class="label">实时排斥标签</div>
+                    <div class="pref-tags" id="dislikedTags">
+                        <span style="color: #888; font-size: 11px;">暂无</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="explanationPanel" class="explanation-panel" style="display: none;">
+                <div class="title">推荐解释 (Top 1)</div>
+                <div id="explanationContent"></div>
+            </div>
+
+            <div id="custPrefsPanel" class="cust-prefs-panel" style="display: none;">
+                <div class="title">🎨 客制化偏好分析</div>
+                <div id="custPrefsContent">
+                    <div class="pref-section">
+                        <div class="label" style="font-size: 11px; color: #5eead4;">温度偏好</div>
+                        <div id="tempPref" style="font-size: 12px; color: #0d9488; font-weight: 600;">-</div>
+                    </div>
+                    <div class="pref-section">
+                        <div class="label" style="font-size: 11px; color: #5eead4;">奶类偏好</div>
+                        <div id="milkPref" style="font-size: 12px; color: #0d9488; font-weight: 600;">-</div>
+                    </div>
+                    <div class="pref-section">
+                        <div class="label" style="font-size: 11px; color: #5eead4;">糖度偏好</div>
+                        <div id="sugarPref" style="font-size: 12px; color: #0d9488; font-weight: 600;">-</div>
+                    </div>
+                    <div class="pref-section">
+                        <div class="label" style="font-size: 11px; color: #5eead4;">客制化关键词</div>
+                        <div id="custKeywords" class="customization-keywords"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 购物车 -->
+            <div class="cart-section" id="cartSection">
+                <div class="cart-header">
+                    <div class="cart-title">
+                        🛒 购物车
+                        <span class="cart-badge" id="cartBadge">0</span>
+                    </div>
+                    <button class="btn-clear-cart" id="btnClearCart" style="display: none;">清空</button>
+                </div>
+                <div class="cart-items" id="cartItems">
+                    <div class="cart-empty">购物车是空的</div>
+                </div>
+                <div class="cart-footer" id="cartFooter" style="display: none;">
+                    <div class="cart-total">
+                        <span class="cart-total-label">合计</span>
+                        <span class="cart-total-value" id="cartTotal">¥0.00</span>
+                    </div>
+                    <button class="btn-checkout" id="btnCheckout">去结算</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 刷新提示 -->
+    <div class="refresh-indicator" id="refreshIndicator" style="display: none;">
+        <div class="loading-spinner" style="width: 16px; height: 16px; border-width: 2px;"></div>
+        <span>正在更新推荐...</span>
+    </div>
+
+    <!-- 订单成功弹窗 -->
+    <div class="order-modal" id="orderModal" style="display: none;">
+        <div class="order-modal-content">
+            <div class="order-modal-icon">✅</div>
+            <div class="order-modal-title">下单成功！</div>
+            <div class="order-modal-id" id="modalOrderId">订单号: -</div>
+            <div class="order-modal-items" id="modalOrderItems"></div>
+            <div class="order-modal-total" id="modalOrderTotal">¥0.00</div>
+            <button class="btn-close-modal" onclick="closeOrderModal()">确定</button>
+        </div>
+    </div>
+
+    <script>
+        // 生成唯一ID
+        const sessionId = 'session_' + Date.now();
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+
+        document.getElementById('sessionId').textContent = sessionId.substr(0, 16) + '...';
+        document.getElementById('userId').textContent = userId;
+
+        let selectedPersona = '健康达人';
+        let interactionCount = 0;
+        let currentRecommendations = [];
+
+        // 画像选择
+        document.querySelectorAll('.persona-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedPersona = card.dataset.persona;
+            });
+        });
+
+        // 获取推荐
+        document.getElementById('btnRecommend').addEventListener('click', async () => {
+            const btn = document.getElementById('btnRecommend');
+            const loading = document.getElementById('loadingIndicator');
+            const grid = document.getElementById('recommendationsGrid');
+
+            btn.disabled = true;
+            btn.textContent = '推荐中...';
+            loading.style.display = 'flex';
+            grid.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/embedding/recommend/v2', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        persona_type: selectedPersona,
+                        user_id: userId,
+                        session_id: sessionId,
+                        top_k: 6,
+                        enable_ab_test: document.getElementById('enableABTest').checked,
+                        enable_behavior: document.getElementById('enableBehavior').checked,
+                        enable_session: document.getElementById('enableSession').checked,
+                        enable_explainability: document.getElementById('enableExplainability').checked,
+                        enable_customization: document.getElementById('enableCustomization').checked
+                    })
+                });
+
+                const data = await response.json();
+                currentRecommendations = data.recommendations || [];
+
+                // 显示实验分组
+                if (data.experiment && Object.keys(data.experiment).length > 0) {
+                    const banner = document.getElementById('experimentBanner');
+                    const variants = document.getElementById('experimentVariants');
+                    variants.innerHTML = '';
+
+                    for (const [expId, info] of Object.entries(data.experiment)) {
+                        const tag = document.createElement('span');
+                        tag.className = 'variant-tag';
+                        tag.textContent = `${info.experiment_name || expId}: ${info.variant_name || info.variant}`;
+                        variants.appendChild(tag);
+                    }
+
+                    banner.style.display = 'block';
+                } else {
+                    document.getElementById('experimentBanner').style.display = 'none';
+                }
+
+                // 显示指标
+                if (data.metrics) {
+                    document.getElementById('metricsCard').style.display = 'block';
+                    document.getElementById('metricTime').textContent = `${data.metrics.total_time_ms}ms`;
+                    document.getElementById('metricLLM').textContent = `${data.llm_info?.total_llm_calls || 0}次`;
+                    document.getElementById('metricScore').textContent = `${(data.metrics.avg_match_score * 100).toFixed(1)}%`;
+                }
+
+                // 渲染推荐卡片
+                renderRecommendations(data.recommendations);
+
+                // 显示解释
+                if (data.recommendations?.[0]?.explanation) {
+                    showExplanation(data.recommendations[0].explanation);
+                }
+
+                // 更新客制化偏好面板
+                if (document.getElementById('enableCustomization').checked) {
+                    updateCustomizationPrefs();
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                grid.innerHTML = `<div style="color: red; padding: 20px;">请求失败: ${error.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '获取推荐';
+                loading.style.display = 'none';
+            }
+        });
+
+        function renderRecommendations(recommendations) {
+            const grid = document.getElementById('recommendationsGrid');
+            grid.innerHTML = '';
+
+            recommendations.forEach((rec, index) => {
+                const card = document.createElement('div');
+                card.className = 'rec-card';
+
+                const breakdown = rec.score_breakdown || {};
+                const behaviorClass = breakdown.behavior_multiplier > 1 ? 'boost' : '';
+                const sessionClass = breakdown.session_multiplier > 1 ? 'boost' : (breakdown.session_multiplier < 1 ? 'penalty' : '');
+                const customizationClass = breakdown.customization_multiplier > 1 ? 'boost' : (breakdown.customization_multiplier < 1 ? 'penalty' : '');
+
+                // 构建客制化建议HTML
+                const suggestedCust = rec.suggested_customization;
+                let customizationHtml = '';
+                if (suggestedCust && suggestedCust.suggested_customization) {
+                    const sc = suggestedCust.suggested_customization;
+                    const confidence = suggestedCust.confidence || 0;
+                    const confClass = confidence >= 0.7 ? 'confidence-high' : (confidence >= 0.4 ? 'confidence-medium' : 'confidence-low');
+                    const confText = confidence >= 0.7 ? '高置信度' : (confidence >= 0.4 ? '中置信度' : '低置信度');
+
+                    customizationHtml = `
+                        <div class="customization-section">
+                            <div class="title">
+                                🎨 推荐客制化
+                                <span class="confidence-badge ${confClass}">${confText} ${(confidence * 100).toFixed(0)}%</span>
+                            </div>
+                            ${sc.temperature ? `<div class="customization-item"><span class="label">温度</span><span class="value">${formatTemp(sc.temperature)}</span></div>` : ''}
+                            ${sc.cup_size ? `<div class="customization-item"><span class="label">杯型</span><span class="value">${formatSize(sc.cup_size)}</span></div>` : ''}
+                            ${sc.sugar_level ? `<div class="customization-item"><span class="label">糖度</span><span class="value">${formatSugar(sc.sugar_level)}</span></div>` : ''}
+                            ${sc.milk_type ? `<div class="customization-item"><span class="label">奶类</span><span class="value">${formatMilk(sc.milk_type)}</span></div>` : ''}
+                            ${suggestedCust.reason ? `<div class="customization-reason">💡 ${suggestedCust.reason}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="rec-card-header">
+                        <div>
+                            <div class="rec-card-title">${rec.item.name}</div>
+                            <div class="rec-card-category">${rec.item.category} · ¥${rec.item.base_price}</div>
+                        </div>
+                        <div class="match-score">${(rec.match_score * 100).toFixed(1)}%</div>
+                    </div>
+
+                    <div class="score-breakdown">
+                        <div class="score-row">
+                            <span class="label">Embedding相似度</span>
+                            <span class="value">${(breakdown.embedding_similarity * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="label">业务规则</span>
+                            <span class="value">×${breakdown.rule_multiplier?.toFixed(2) || '1.00'}</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="label">历史行为</span>
+                            <span class="value ${behaviorClass}">×${breakdown.behavior_multiplier?.toFixed(2) || '1.00'}</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="label">Session偏好</span>
+                            <span class="value ${sessionClass}">×${breakdown.session_multiplier?.toFixed(2) || '1.00'}</span>
+                        </div>
+                        <div class="score-row" style="background: rgba(3,105,161,0.1); margin: 4px -10px; padding: 4px 10px;">
+                            <span class="label" style="color: #0369a1;">🎨 客制化匹配</span>
+                            <span class="value ${customizationClass}" style="color: #0369a1;">×${breakdown.customization_multiplier?.toFixed(2) || '1.00'}</span>
+                        </div>
+                    </div>
+
+                    ${customizationHtml}
+
+                    <div class="rec-reason">${rec.reason || '为您精选推荐'}</div>
+
+                    ${rec.matched_keywords?.length > 0 ? `
+                        <div class="matched-keywords">
+                            ${rec.matched_keywords.map(k => `<span class="keyword-tag">${k}</span>`).join('')}
+                        </div>
+                    ` : ''}
+
+                    <div class="feedback-buttons">
+                        <button class="feedback-btn like" onclick="recordFeedback('${rec.item.sku}', 'like', this, ${JSON.stringify(rec.item.tags).replace(/"/g, "'")})">👍 喜欢</button>
+                        <button class="feedback-btn dislike" onclick="recordFeedback('${rec.item.sku}', 'dislike', this, ${JSON.stringify(rec.item.tags).replace(/"/g, "'")})">👎 不喜欢</button>
+                        <button class="btn-add-cart" onclick="addToCart('${rec.item.sku}', '${rec.item.name}', ${rec.item.base_price}, this, ${JSON.stringify(rec.suggested_customization?.suggested_customization || {}).replace(/"/g, "'")})">🛒 加入</button>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function showExplanation(explanation) {
+            const panel = document.getElementById('explanationPanel');
+            const content = document.getElementById('explanationContent');
+
+            let html = `<div style="margin-bottom: 8px;">${explanation.summary}</div>`;
+
+            if (explanation.factors) {
+                html += explanation.factors.map(f => `
+                    <div class="factor-item">
+                        <span style="flex-shrink: 0; width: 80px; font-size: 11px; color: #666;">${f.label}</span>
+                        <div class="factor-bar">
+                            <div class="factor-bar-fill" style="width: ${f.contribution || 25}%"></div>
+                        </div>
+                        <span style="flex-shrink: 0; font-size: 11px; font-weight: 600;">${f.contribution?.toFixed(0) || 25}%</span>
+                    </div>
+                `).join('');
+            }
+
+            content.innerHTML = html;
+            panel.style.display = 'block';
+        }
+
+        async function recordFeedback(sku, type, btn, tags) {
+            // 视觉反馈
+            btn.classList.add('clicked');
+
+            // 更新交互计数
+            interactionCount++;
+            document.getElementById('interactionCount').textContent = interactionCount;
+
+            // 更新实时偏好显示
+            updateRealtimePrefs(type, tags);
+
+            // 记录反馈
+            try {
+                await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        session_id: sessionId,
+                        item_sku: sku,
+                        feedback_type: type
+                    })
+                });
+
+                // 记录Session交互
+                const item = currentRecommendations.find(r => r.item.sku === sku)?.item;
+                if (item) {
+                    await fetch('/api/session/interaction', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: sessionId,
+                            interaction_type: type,
+                            item_data: {
+                                sku: item.sku,
+                                tags: item.tags,
+                                category: item.category,
+                                price: item.base_price
+                            }
+                        })
+                    });
+                }
+            } catch (error) {
+                console.error('Feedback error:', error);
+            }
+        }
+
+        function updateRealtimePrefs(type, tags) {
+            const container = type === 'like' ? document.getElementById('likedTags') : document.getElementById('dislikedTags');
+
+            // 解析tags (处理单引号)
+            let parsedTags = [];
+            if (typeof tags === 'string') {
+                try {
+                    parsedTags = JSON.parse(tags.replace(/'/g, '"'));
+                } catch (e) {
+                    parsedTags = tags.split(',');
+                }
+            } else if (Array.isArray(tags)) {
+                parsedTags = tags;
+            }
+
+            // 清除"暂无"提示
+            if (container.querySelector('span[style]')) {
+                container.innerHTML = '';
+            }
+
+            // 添加标签
+            parsedTags.forEach(tag => {
+                if (!container.querySelector(`[data-tag="${tag}"]`)) {
+                    const span = document.createElement('span');
+                    span.className = `pref-tag ${type === 'like' ? 'liked' : 'disliked'}`;
+                    span.textContent = tag;
+                    span.dataset.tag = tag;
+                    container.appendChild(span);
+                }
+            });
+        }
+
+        // ============ 订单历史对比演示 ============
+        const comparisonUserId = 'demo_order_user_' + Date.now();
+        const newUserId = 'brand_new_user_' + Date.now();
+        let simulatedOrderCount = 0;
+
+        // 模拟生成订单
+        document.getElementById('btnSimulateOrders').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSimulateOrders');
+            const status = document.getElementById('orderStatus');
+
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+
+            try {
+                const response = await fetch('/api/orders/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: comparisonUserId,
+                        order_count: 20,
+                        days_range: 60,
+                        category_weights: {
+                            '咖啡': 0.6,
+                            '茶饮': 0.25,
+                            '星冰乐': 0.15
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                simulatedOrderCount = data.order_count;
+
+                status.className = 'order-status has-orders';
+                status.innerHTML = `✅ 已生成 <strong>${data.order_count}</strong> 笔订单 |
+                    ${Object.entries(data.category_distribution).map(([k,v]) => `${k}: ${v}`).join(', ')}`;
+
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = '❌ 生成失败';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎲 模拟生成订单历史';
+            }
+        });
+
+        // 对比推荐效果
+        document.getElementById('btnCompare').addEventListener('click', async () => {
+            const btn = document.getElementById('btnCompare');
+            const grid = document.getElementById('comparisonGrid');
+            const summary = document.getElementById('comparisonSummary');
+
+            btn.disabled = true;
+            btn.textContent = '对比中...';
+
+            try {
+                // 并行请求两个用户的推荐
+                const [oldUserResp, newUserResp] = await Promise.all([
+                    fetch('/api/embedding/recommend/v2', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            persona_type: selectedPersona,
+                            user_id: comparisonUserId,
+                            top_k: 4,
+                            enable_ab_test: false,
+                            enable_behavior: true,
+                            enable_session: false,
+                            enable_explainability: true
+                        })
+                    }),
+                    fetch('/api/embedding/recommend/v2', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            persona_type: selectedPersona,
+                            user_id: newUserId,
+                            top_k: 4,
+                            enable_ab_test: false,
+                            enable_behavior: true,
+                            enable_session: false,
+                            enable_explainability: true
+                        })
+                    })
+                ]);
+
+                const oldUserData = await oldUserResp.json();
+                const newUserData = await newUserResp.json();
+
+                // 渲染老用户推荐
+                document.getElementById('oldUserOrderCount').textContent =
+                    simulatedOrderCount > 0 ? `(${simulatedOrderCount}笔订单)` : '';
+                renderComparisonRecs('oldUserRecs', oldUserData.recommendations, true);
+
+                // 渲染新用户推荐
+                renderComparisonRecs('newUserRecs', newUserData.recommendations, false);
+
+                // 计算对比统计
+                const oldAvgScore = oldUserData.recommendations.reduce((sum, r) => sum + r.match_score, 0) / oldUserData.recommendations.length;
+                const newAvgScore = newUserData.recommendations.reduce((sum, r) => sum + r.match_score, 0) / newUserData.recommendations.length;
+                const avgBoost = oldUserData.recommendations.reduce((sum, r) => sum + (r.score_breakdown?.behavior_multiplier || 1), 0) / oldUserData.recommendations.length;
+                const improvement = ((oldAvgScore / newAvgScore - 1) * 100).toFixed(1);
+
+                document.getElementById('summaryStats').innerHTML = `
+                    <div class="summary-stat">
+                        <div class="number">${(oldAvgScore * 100).toFixed(1)}%</div>
+                        <div class="label">老用户平均得分</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">${(newAvgScore * 100).toFixed(1)}%</div>
+                        <div class="label">新用户平均得分</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">×${avgBoost.toFixed(2)}</div>
+                        <div class="label">平均订单加权</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number" style="color: ${improvement > 0 ? '#22c55e' : '#6366f1'}">
+                            ${improvement > 0 ? '+' : ''}${improvement}%
+                        </div>
+                        <div class="label">推荐提升</div>
+                    </div>
+                `;
+
+                grid.style.display = 'grid';
+                summary.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⚡ 对比推荐效果';
+            }
+        });
+
+        // 客制化格式化辅助函数
+        function formatTemp(temp) {
+            const map = { 'HOT': '热饮 ☕', 'ICED': '冰饮 🧊', 'BLENDED': '冰沙 🌀' };
+            return map[temp] || temp;
+        }
+
+        function formatSize(size) {
+            const map = { 'TALL': '中杯', 'GRANDE': '大杯', 'VENTI': '超大杯' };
+            return map[size] || size;
+        }
+
+        function formatSugar(sugar) {
+            const map = { 'NONE': '无糖', 'LIGHT': '少糖', 'HALF': '半糖', 'STANDARD': '标准糖', 'EXTRA': '多糖' };
+            return map[sugar] || sugar;
+        }
+
+        function formatMilk(milk) {
+            const map = { 'WHOLE': '全脂奶', 'SKIM': '脱脂奶', 'SOY': '豆奶', 'OAT': '燕麦奶', 'ALMOND': '杏仁奶', 'COCONUT': '椰奶' };
+            return map[milk] || milk;
+        }
+
+        // 更新客制化偏好面板
+        async function updateCustomizationPrefs() {
+            try {
+                const response = await fetch(`/api/behavior/user/${userId}`);
+                const data = await response.json();
+
+                if (data.customization_preference) {
+                    const panel = document.getElementById('custPrefsPanel');
+                    panel.style.display = 'block';
+
+                    const cp = data.customization_preference;
+
+                    // 温度偏好
+                    if (cp.temperature_preference) {
+                        const temps = Object.entries(cp.temperature_preference)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([k, v]) => `${formatTemp(k)} ${(v * 100).toFixed(0)}%`)
+                            .join(', ');
+                        document.getElementById('tempPref').textContent = temps || '-';
+                    }
+
+                    // 奶类偏好
+                    if (cp.milk_preference) {
+                        const milks = Object.entries(cp.milk_preference)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([k, v]) => `${formatMilk(k)} ${(v * 100).toFixed(0)}%`)
+                            .join(', ');
+                        document.getElementById('milkPref').textContent = milks || '-';
+                    }
+
+                    // 糖度偏好
+                    if (cp.sugar_preference) {
+                        const sugars = Object.entries(cp.sugar_preference)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([k, v]) => `${formatSugar(k)} ${(v * 100).toFixed(0)}%`)
+                            .join(', ');
+                        document.getElementById('sugarPref').textContent = sugars || '-';
+                    }
+
+                    // 客制化关键词
+                    const keywordsContainer = document.getElementById('custKeywords');
+                    if (data.customization_keywords && data.customization_keywords.length > 0) {
+                        keywordsContainer.innerHTML = data.customization_keywords
+                            .map(k => `<span class="customization-keyword">${k}</span>`)
+                            .join('');
+                    } else {
+                        keywordsContainer.innerHTML = '<span style="color: #888; font-size: 11px;">暂无</span>';
+                    }
+                }
+            } catch (error) {
+                console.log('No customization preferences yet');
+            }
+        }
+
+        // ============ 预设管理 ============
+        document.getElementById('btnCreatePreset').addEventListener('click', async () => {
+            const btn = document.getElementById('btnCreatePreset');
+            const status = document.getElementById('presetStatus');
+
+            btn.disabled = true;
+            btn.textContent = '创建中...';
+
+            try {
+                const response = await fetch('/api/presets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        name: '我的日常',
+                        default_temperature: 'ICED',
+                        default_cup_size: 'GRANDE',
+                        default_sugar_level: 'NONE',
+                        default_milk_type: 'OAT'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.preset) {
+                    status.className = 'order-status has-orders';
+                    status.innerHTML = `✅ 已创建预设: <strong>${data.preset.name}</strong>`;
+                    loadUserPresets();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = '❌ 创建失败';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '➕ 创建预设';
+            }
+        });
+
+        document.getElementById('btnLoadPresets').addEventListener('click', loadUserPresets);
+
+        async function loadUserPresets() {
+            const container = document.getElementById('presetList');
+            const status = document.getElementById('presetStatus');
+
+            try {
+                const response = await fetch(`/api/presets/user/${userId}`);
+                const data = await response.json();
+
+                if (data.presets && data.presets.length > 0) {
+                    container.innerHTML = data.presets.map(p => `
+                        <div class="preset-card">
+                            <div class="name">📋 ${p.name}</div>
+                            <div class="options">
+                                ${p.default_temperature ? formatTemp(p.default_temperature) : ''}
+                                ${p.default_cup_size ? ' · ' + formatSize(p.default_cup_size) : ''}
+                                ${p.default_sugar_level ? ' · ' + formatSugar(p.default_sugar_level) : ''}
+                                ${p.default_milk_type ? ' · ' + formatMilk(p.default_milk_type) : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                    status.className = 'order-status has-orders';
+                    status.innerHTML = `✅ 已加载 <strong>${data.presets.length}</strong> 个预设`;
+                } else {
+                    container.innerHTML = '<div style="color: #888; font-size: 12px;">暂无预设，点击"创建预设"开始</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderComparisonRecs(containerId, recommendations, showBoost) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            recommendations.forEach((rec, index) => {
+                const breakdown = rec.score_breakdown || {};
+                const orderDetail = breakdown.order_boost_detail || {};
+                const hasBoosted = breakdown.behavior_multiplier > 1;
+
+                let boostHtml = '';
+                if (showBoost && hasBoosted && orderDetail.factors) {
+                    boostHtml = `
+                        <div class="boost-detail">
+                            <div class="factor">
+                                <span class="label">复购加权</span>
+                                <span class="value">×${orderDetail.factors.repurchase?.toFixed(2) || '1.00'}</span>
+                            </div>
+                            <div class="factor">
+                                <span class="label">类别偏好</span>
+                                <span class="value">×${orderDetail.factors.category?.toFixed(2) || '1.00'}</span>
+                            </div>
+                            <div class="factor">
+                                <span class="label">标签匹配</span>
+                                <span class="value">×${orderDetail.factors.tag?.toFixed(2) || '1.00'}</span>
+                            </div>
+                            <div class="factor">
+                                <span class="label">价格匹配</span>
+                                <span class="value">×${orderDetail.factors.price_match?.toFixed(2) || '1.00'}</span>
+                            </div>
+                            ${orderDetail.explanation ? `<div class="boost-explanation">💡 ${orderDetail.explanation}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                const hasCustBoosted = breakdown.customization_multiplier && breakdown.customization_multiplier !== 1;
+
+                const item = document.createElement('div');
+                item.className = 'comparison-item';
+                item.innerHTML = `
+                    <div class="comparison-item-header">
+                        <div>
+                            <div class="comparison-item-name">${index + 1}. ${rec.item.name}</div>
+                            <div style="font-size: 12px; color: #888;">${rec.item.category} · ¥${rec.item.base_price}</div>
+                        </div>
+                        <div class="comparison-item-score ${hasBoosted ? 'boosted' : 'normal'}">
+                            ${(rec.match_score * 100).toFixed(1)}%
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        Embedding: ${(breakdown.embedding_similarity * 100).toFixed(1)}%
+                        × 规则: ${breakdown.rule_multiplier?.toFixed(2) || '1.00'}
+                        × <strong style="color: ${hasBoosted ? '#22c55e' : '#666'}">订单: ${breakdown.behavior_multiplier?.toFixed(2) || '1.00'}</strong>
+                        × <strong style="color: ${hasCustBoosted ? '#0369a1' : '#666'}">客制化: ${breakdown.customization_multiplier?.toFixed(2) || '1.00'}</strong>
+                    </div>
+                    ${boostHtml}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // ============ 自定义偏好搜索 ============
+        function addHint(hint) {
+            const input = document.getElementById('customPreference');
+            const currentVal = input.value.trim();
+            if (currentVal) {
+                input.value = currentVal + '、' + hint;
+            } else {
+                input.value = hint;
+            }
+        }
+
+        document.getElementById('btnCustomSearch').addEventListener('click', searchByCustomPreference);
+        document.getElementById('customPreference').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchByCustomPreference();
+        });
+
+        async function searchByCustomPreference() {
+            const input = document.getElementById('customPreference').value.trim();
+            if (!input) return;
+
+            const btn = document.getElementById('btnCustomSearch');
+            const loading = document.getElementById('loadingIndicator');
+            const grid = document.getElementById('recommendationsGrid');
+
+            btn.disabled = true;
+            btn.textContent = '匹配中...';
+            loading.style.display = 'flex';
+            grid.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/embedding/recommend/custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        custom_preference: input,
+                        user_id: userId,
+                        session_id: sessionId,
+                        top_k: 6,
+                        enable_ab_test: document.getElementById('enableABTest').checked,
+                        enable_behavior: document.getElementById('enableBehavior').checked,
+                        enable_session: document.getElementById('enableSession').checked,
+                        enable_explainability: document.getElementById('enableExplainability').checked,
+                        enable_customization: document.getElementById('enableCustomization').checked
+                    })
+                });
+
+                const data = await response.json();
+                currentRecommendations = data.recommendations || [];
+
+                // 显示实验分组
+                if (data.experiment && Object.keys(data.experiment).length > 0) {
+                    const banner = document.getElementById('experimentBanner');
+                    const variants = document.getElementById('experimentVariants');
+                    variants.innerHTML = '';
+
+                    for (const [expId, info] of Object.entries(data.experiment)) {
+                        const tag = document.createElement('span');
+                        tag.className = 'variant-tag';
+                        tag.textContent = `${info.experiment_name || expId}: ${info.variant_name || info.variant}`;
+                        variants.appendChild(tag);
+                    }
+
+                    banner.style.display = 'block';
+                }
+
+                // 显示指标
+                if (data.metrics) {
+                    document.getElementById('metricsCard').style.display = 'block';
+                    document.getElementById('metricTime').textContent = `${data.metrics.total_time_ms}ms`;
+                    document.getElementById('metricLLM').textContent = `${data.llm_info?.total_llm_calls || 0}次`;
+                    document.getElementById('metricScore').textContent = `${(data.metrics.avg_match_score * 100).toFixed(1)}%`;
+                }
+
+                renderRecommendations(data.recommendations);
+
+                if (data.recommendations?.[0]?.explanation) {
+                    showExplanation(data.recommendations[0].explanation);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                grid.innerHTML = `<div style="color: red; padding: 20px;">请求失败: ${error.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '智能匹配';
+                loading.style.display = 'none';
+            }
+        }
+
+        // ============ 购物车功能 ============
+        let cartData = { items: [], total_price: 0, total_items: 0 };
+
+        // 初始化加载购物车
+        async function loadCart() {
+            try {
+                const response = await fetch(`/api/cart/${sessionId}`);
+                cartData = await response.json();
+                renderCart();
+            } catch (error) {
+                console.log('Cart not loaded:', error);
+            }
+        }
+
+        // 添加到购物车
+        async function addToCart(sku, name, price, btn, customization) {
+            btn.disabled = true;
+            btn.textContent = '添加中...';
+
+            try {
+                // 处理customization - 解析单引号的JSON
+                let custData = null;
+                if (customization && typeof customization === 'string') {
+                    try {
+                        custData = JSON.parse(customization.replace(/'/g, '"'));
+                    } catch (e) {}
+                } else if (customization && typeof customization === 'object' && Object.keys(customization).length > 0) {
+                    custData = customization;
+                }
+
+                const response = await fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        user_id: userId,
+                        item_sku: sku,
+                        quantity: 1,
+                        customization: custData
+                    })
+                });
+
+                const data = await response.json();
+                if (data.status === 'added') {
+                    cartData = data.cart;
+                    renderCart();
+                    btn.classList.add('added');
+                    btn.textContent = '✓ 已加入';
+                    setTimeout(() => {
+                        btn.classList.remove('added');
+                        btn.textContent = '🛒 加入';
+                    }, 1500);
+                } else {
+                    alert(data.message || '添加失败');
+                }
+            } catch (error) {
+                console.error('Add to cart error:', error);
+                alert('添加失败');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 更新购物车商品数量
+        async function updateCartItemQty(itemId, delta) {
+            const item = cartData.items.find(i => i.id === itemId);
+            if (!item) return;
+
+            const newQty = item.quantity + delta;
+
+            try {
+                const response = await fetch(`/api/cart/${sessionId}/item/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+
+                const data = await response.json();
+                if (data.status === 'updated') {
+                    cartData = data.cart;
+                    renderCart();
+                }
+            } catch (error) {
+                console.error('Update cart error:', error);
+            }
+        }
+
+        // 删除购物车商品
+        async function removeCartItem(itemId) {
+            try {
+                const response = await fetch(`/api/cart/${sessionId}/item/${itemId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.status === 'removed') {
+                    cartData = data.cart;
+                    renderCart();
+                }
+            } catch (error) {
+                console.error('Remove cart error:', error);
+            }
+        }
+
+        // 清空购物车
+        document.getElementById('btnClearCart').addEventListener('click', async () => {
+            if (!confirm('确定要清空购物车吗？')) return;
+
+            try {
+                const response = await fetch(`/api/cart/${sessionId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.status === 'cleared') {
+                    cartData = data.cart;
+                    renderCart();
+                }
+            } catch (error) {
+                console.error('Clear cart error:', error);
+            }
+        });
+
+        // 结算
+        document.getElementById('btnCheckout').addEventListener('click', async () => {
+            if (cartData.items.length === 0) return;
+
+            const btn = document.getElementById('btnCheckout');
+            btn.disabled = true;
+            btn.textContent = '处理中...';
+
+            try {
+                const response = await fetch('/api/cart/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        user_id: userId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showOrderModal(data);
+                    cartData = { items: [], total_price: 0, total_items: 0 };
+                    renderCart();
+                } else {
+                    alert(data.message || '结算失败');
+                }
+            } catch (error) {
+                console.error('Checkout error:', error);
+                alert('结算失败');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '去结算';
+            }
+        });
+
+        // 渲染购物车
+        function renderCart() {
+            const itemsContainer = document.getElementById('cartItems');
+            const footer = document.getElementById('cartFooter');
+            const clearBtn = document.getElementById('btnClearCart');
+            const badge = document.getElementById('cartBadge');
+            const total = document.getElementById('cartTotal');
+
+            badge.textContent = cartData.total_items || 0;
+            total.textContent = `¥${(cartData.total_price || 0).toFixed(2)}`;
+
+            if (!cartData.items || cartData.items.length === 0) {
+                itemsContainer.innerHTML = '<div class="cart-empty">购物车是空的</div>';
+                footer.style.display = 'none';
+                clearBtn.style.display = 'none';
+                return;
+            }
+
+            footer.style.display = 'block';
+            clearBtn.style.display = 'block';
+
+            itemsContainer.innerHTML = cartData.items.map(item => {
+                const custText = formatCartCustomization(item.customization);
+                return `
+                    <div class="cart-item">
+                        <div class="cart-item-info">
+                            <div class="cart-item-name">${item.item_name}</div>
+                            ${custText ? `<div class="cart-item-customization">${custText}</div>` : ''}
+                        </div>
+                        <div class="cart-item-qty">
+                            <button onclick="updateCartItemQty('${item.id}', -1)">-</button>
+                            <span>${item.quantity}</span>
+                            <button onclick="updateCartItemQty('${item.id}', 1)">+</button>
+                        </div>
+                        <div class="cart-item-price">¥${(item.final_price * item.quantity).toFixed(2)}</div>
+                        <button class="cart-item-remove" onclick="removeCartItem('${item.id}')">×</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatCartCustomization(cust) {
+            if (!cust) return '';
+            const parts = [];
+            if (cust.cup_size) parts.push(formatSize(cust.cup_size));
+            if (cust.temperature) parts.push(formatTemp(cust.temperature));
+            if (cust.sugar_level) parts.push(formatSugar(cust.sugar_level));
+            if (cust.milk_type && cust.milk_type !== 'WHOLE') parts.push(formatMilk(cust.milk_type));
+            return parts.join(' · ');
+        }
+
+        // 显示订单成功弹窗
+        function showOrderModal(data) {
+            const modal = document.getElementById('orderModal');
+            document.getElementById('modalOrderId').textContent = `订单号: ${data.order_id}`;
+            document.getElementById('modalOrderTotal').textContent = `¥${data.order.total_price.toFixed(2)}`;
+            document.getElementById('modalOrderItems').innerHTML = data.order.items.map(item =>
+                `<div>${item.item_name} × ${item.quantity} = ¥${(item.final_price * item.quantity).toFixed(2)}</div>`
+            ).join('');
+            modal.style.display = 'flex';
+        }
+
+        function closeOrderModal() {
+            document.getElementById('orderModal').style.display = 'none';
+        }
+
+        // ============ 实时刷新机制 ============
+        let refreshTimer = null;
+        let autoRefreshEnabled = true;
+
+        function showRefreshIndicator() {
+            const indicator = document.getElementById('refreshIndicator');
+            indicator.style.display = 'flex';
+            indicator.classList.remove('hidden');
+        }
+
+        function hideRefreshIndicator() {
+            const indicator = document.getElementById('refreshIndicator');
+            indicator.classList.add('hidden');
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 300);
+        }
+
+        async function autoRefreshRecommendations() {
+            if (!autoRefreshEnabled || currentRecommendations.length === 0) return;
+
+            showRefreshIndicator();
+
+            try {
+                const customPref = document.getElementById('customPreference').value.trim();
+
+                const response = await fetch(customPref ? '/api/embedding/recommend/custom' : '/api/embedding/recommend/v2', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        persona_type: selectedPersona,
+                        custom_preference: customPref || undefined,
+                        user_id: userId,
+                        session_id: sessionId,
+                        top_k: 6,
+                        enable_ab_test: document.getElementById('enableABTest').checked,
+                        enable_behavior: document.getElementById('enableBehavior').checked,
+                        enable_session: document.getElementById('enableSession').checked,
+                        enable_explainability: document.getElementById('enableExplainability').checked,
+                        enable_customization: document.getElementById('enableCustomization').checked
+                    })
+                });
+
+                const data = await response.json();
+                currentRecommendations = data.recommendations || [];
+                renderRecommendations(data.recommendations);
+
+                // 更新指标
+                if (data.metrics) {
+                    document.getElementById('metricTime').textContent = `${data.metrics.total_time_ms}ms`;
+                    document.getElementById('metricScore').textContent = `${(data.metrics.avg_match_score * 100).toFixed(1)}%`;
+                }
+
+            } catch (error) {
+                console.error('Auto refresh error:', error);
+            } finally {
+                hideRefreshIndicator();
+            }
+        }
+
+        // 修改recordFeedback函数，添加自动刷新
+        const originalRecordFeedback = recordFeedback;
+        recordFeedback = async function(sku, type, btn, tags) {
+            // 视觉反馈
+            btn.classList.add('clicked');
+
+            // 更新交互计数
+            interactionCount++;
+            document.getElementById('interactionCount').textContent = interactionCount;
+
+            // 更新实时偏好显示
+            updateRealtimePrefs(type, tags);
+
+            // 记录反馈
+            try {
+                await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        session_id: sessionId,
+                        item_sku: sku,
+                        feedback_type: type
+                    })
+                });
+
+                // 记录Session交互
+                const item = currentRecommendations.find(r => r.item.sku === sku)?.item;
+                if (item) {
+                    await fetch('/api/session/interaction', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: sessionId,
+                            interaction_type: type,
+                            item_data: {
+                                sku: item.sku,
+                                tags: item.tags,
+                                category: item.category,
+                                price: item.base_price
+                            }
+                        })
+                    });
+                }
+
+                // 触发自动刷新（防抖）
+                if (refreshTimer) clearTimeout(refreshTimer);
+                refreshTimer = setTimeout(autoRefreshRecommendations, 800);
+
+            } catch (error) {
+                console.error('Feedback error:', error);
+            }
+        };
+
+        // 页面加载时初始化购物车
+        loadCart();
+    </script>
+</body>
+</html>

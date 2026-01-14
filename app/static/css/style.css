@@ -1,0 +1,561 @@
+/* 星巴克风格样式 */
+:root {
+    --starbucks-green: #00704A;
+    --starbucks-light-green: #1E3932;
+    --starbucks-gold: #CBA258;
+    --starbucks-cream: #F2F0EB;
+    --starbucks-white: #FFFFFF;
+    --starbucks-black: #1E1E1E;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--starbucks-cream);
+    color: var(--starbucks-black);
+    line-height: 1.6;
+}
+
+/* 头部 */
+.header {
+    background-color: var(--starbucks-white);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    width: 50px;
+    height: 50px;
+    background-color: var(--starbucks-green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.logo-text {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--starbucks-light-green);
+}
+
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background-color: var(--starbucks-green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+
+/* 主容器 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* 区块标题 */
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.section-title h2 {
+    font-size: 24px;
+    color: var(--starbucks-light-green);
+    position: relative;
+    padding-left: 16px;
+}
+
+.section-title h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 24px;
+    background-color: var(--starbucks-green);
+    border-radius: 2px;
+}
+
+.view-all {
+    color: var(--starbucks-green);
+    text-decoration: none;
+    font-size: 14px;
+    transition: opacity 0.2s;
+}
+
+.view-all:hover {
+    opacity: 0.7;
+}
+
+/* 推荐卡片网格 */
+.recommendation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+/* 产品卡片 */
+.product-card {
+    background: var(--starbucks-white);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+}
+
+.product-image {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, var(--starbucks-green) 0%, var(--starbucks-light-green) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.product-image .placeholder {
+    font-size: 64px;
+    opacity: 0.8;
+}
+
+.product-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-new {
+    background-color: #E63946;
+    color: white;
+}
+
+.badge-seasonal {
+    background-color: var(--starbucks-gold);
+    color: white;
+}
+
+.badge-reason {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+}
+
+.product-info {
+    padding: 16px;
+}
+
+.product-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--starbucks-black);
+    margin-bottom: 4px;
+}
+
+.product-english {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.product-desc {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.product-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--starbucks-green);
+}
+
+.product-price::before {
+    content: '¥';
+    font-size: 14px;
+}
+
+.product-calories {
+    font-size: 12px;
+    color: #999;
+}
+
+.product-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.tag {
+    padding: 2px 8px;
+    background-color: var(--starbucks-cream);
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* 分类标签 */
+.category-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.category-tab {
+    padding: 10px 24px;
+    background-color: var(--starbucks-white);
+    border: 2px solid transparent;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.category-tab:hover {
+    border-color: var(--starbucks-green);
+    color: var(--starbucks-green);
+}
+
+.category-tab.active {
+    background-color: var(--starbucks-green);
+    color: white;
+}
+
+/* 客制化弹窗 */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--starbucks-white);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.customization-section {
+    margin-bottom: 24px;
+}
+
+.customization-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--starbucks-light-green);
+    margin-bottom: 12px;
+    display: block;
+}
+
+.customization-options {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.option-btn {
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    border-radius: 24px;
+    background: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.option-btn:hover {
+    border-color: var(--starbucks-green);
+}
+
+.option-btn.selected {
+    border-color: var(--starbucks-green);
+    background-color: var(--starbucks-green);
+    color: white;
+}
+
+.option-btn .price-add {
+    font-size: 12px;
+    color: var(--starbucks-gold);
+    margin-left: 4px;
+}
+
+.option-btn.selected .price-add {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.extras-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.extra-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--starbucks-cream);
+    border-radius: 12px;
+}
+
+.extra-item label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.extra-price {
+    color: var(--starbucks-gold);
+    font-weight: 500;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.total-price {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--starbucks-green);
+}
+
+.total-price::before {
+    content: '¥';
+    font-size: 16px;
+}
+
+.add-to-cart-btn {
+    padding: 14px 40px;
+    background-color: var(--starbucks-green);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.add-to-cart-btn:hover {
+    background-color: var(--starbucks-light-green);
+}
+
+/* 加载状态 */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--starbucks-cream);
+    border-top-color: var(--starbucks-green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .header-content {
+        padding: 12px 16px;
+    }
+
+    .logo-text {
+        font-size: 18px;
+    }
+
+    .container {
+        padding: 16px;
+    }
+
+    .recommendation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-title h2 {
+        font-size: 20px;
+    }
+}
+
+/* 用户偏好设置面板 */
+.preference-panel {
+    background: var(--starbucks-white);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+}
+
+.preference-panel h3 {
+    font-size: 16px;
+    color: var(--starbucks-light-green);
+    margin-bottom: 16px;
+}
+
+.preference-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pref-tag {
+    padding: 6px 14px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pref-tag:hover {
+    border-color: var(--starbucks-green);
+}
+
+.pref-tag.selected {
+    background-color: var(--starbucks-green);
+    border-color: var(--starbucks-green);
+    color: white;
+}
+
+/* Toast 提示 */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--starbucks-light-green);
+    color: white;
+    padding: 14px 28px;
+    border-radius: 30px;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 300;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
