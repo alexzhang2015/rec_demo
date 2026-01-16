@@ -637,6 +637,149 @@
         .confidence-medium { background: #fef3c7; color: #92400e; }
         .confidence-low { background: #fee2e2; color: #991b1b; }
 
+        /* 客制化选项可视化样式 */
+        .cust-options-panel {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .cust-options-panel .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .cust-options-panel .panel-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cust-options-panel .toggle-icon {
+            font-size: 10px;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }
+
+        .cust-options-panel.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .cust-options-content {
+            display: none;
+        }
+
+        .cust-options-panel.expanded .cust-options-content {
+            display: block;
+        }
+
+        .cust-option-group {
+            margin-bottom: 10px;
+        }
+
+        .cust-option-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .cust-option-label {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cust-option-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .cust-chip {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            background: #e2e8f0;
+            color: #64748b;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .cust-chip.highlighted {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
+        }
+
+        .cust-chip.matched {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+
+        .cust-chip.persona-match {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        }
+
+        .cust-chip.default {
+            border: 2px solid #94a3b8;
+            background: white;
+        }
+
+        .cust-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed #e2e8f0;
+        }
+
+        .cust-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            color: #64748b;
+        }
+
+        .cust-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .cust-legend-dot.recommended { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
+        .cust-legend-dot.persona { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .cust-legend-dot.default { background: white; border: 2px solid #94a3b8; }
+
+        .member-price-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+
         /* 预设管理样式 */
         .preset-section {
             background: linear-gradient(135deg, #fae8ff 0%, #e9d5ff 100%);
@@ -1397,6 +1540,225 @@
         let interactionCount = 0;
         let currentRecommendations = [];
 
+        // 人设与客制化偏好映射
+        const personaCustomizationMap = {
+            '健康达人': {
+                temperatures: ['冰', '少冰', '去冰'],
+                sugars: ['不另外加糖', '0热量代糖'],
+                milks: ['燕麦奶', '脱脂牛奶', '巴旦木奶', '豆奶'],
+                keywords: ['低卡', '无糖', '植物基']
+            },
+            '咖啡重度用户': {
+                temperatures: ['热', '特别热'],
+                espressoRoasts: ['经典浓缩(深烘)'],
+                espressoTypes: ['原萃浓缩', '满萃浓缩'],
+                keywords: ['浓郁', '提神', '浓缩']
+            },
+            '甜品爱好者': {
+                temperatures: ['冰', '少冰'],
+                sugars: ['经典糖'],
+                sugarFreeFlavors: ['香草风味', '榛果风味', '海盐焦糖风味'],
+                drizzles: ['摩卡淋酱', '焦糖风味酱'],
+                whippedCream: true,
+                keywords: ['甜蜜', '奶油', '焦糖']
+            },
+            '尝鲜派': {
+                temperatures: ['冰', '少冰'],
+                milks: ['燕麦奶', '椰奶'],
+                sugarFreeFlavors: ['大溪地香草风味', '莓莓风味', '糯香斑斓风味'],
+                keywords: ['新品', '限定', '创新']
+            },
+            '实用主义': {
+                cupSizes: ['大杯', '超大杯'],
+                temperatures: ['热', '冰'],
+                sugars: ['经典糖', '不另外加糖'],
+                keywords: ['经典', '实惠', '大杯']
+            },
+            '养生白领': {
+                temperatures: ['热', '微热', '少冰'],
+                sugars: ['不另外加糖', '0热量代糖', '少甜'],
+                milks: ['燕麦奶', '脱脂牛奶'],
+                keywords: ['提神', '低糖', '健康']
+            }
+        };
+
+        // 渲染客制化选项
+        function renderCustomizationOptions(constraints, suggestedCust, persona) {
+            if (!constraints) return '';
+
+            const personaPrefs = personaCustomizationMap[persona] || {};
+            const suggested = suggestedCust?.suggested_customization || {};
+
+            let html = '<div class="cust-options-content">';
+
+            // 温度选项
+            if (constraints.available_temperatures?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">🌡️ 温度</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_temperatures.map(t => {
+                            const isRecommended = suggested.temperature === t;
+                            const isPersonaMatch = personaPrefs.temperatures?.includes(t);
+                            const isDefault = constraints.default_temperature === t;
+                            let classes = ['cust-chip'];
+                            if (isRecommended) classes.push('highlighted');
+                            else if (isPersonaMatch) classes.push('persona-match');
+                            if (isDefault) classes.push('default');
+                            return `<span class="${classes.join(' ')}">${t}${isRecommended ? ' ✓' : ''}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 浓缩烘焙类型
+            if (constraints.available_espresso_roasts?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">☕ 浓缩烘焙</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_espresso_roasts.map(r => {
+                            const isRecommended = suggested.espresso_roast === r;
+                            const isPersonaMatch = personaPrefs.espressoRoasts?.includes(r);
+                            const isDefault = constraints.default_espresso_roast === r;
+                            let classes = ['cust-chip'];
+                            if (isRecommended) classes.push('highlighted');
+                            else if (isPersonaMatch) classes.push('persona-match');
+                            if (isDefault) classes.push('default');
+                            return `<span class="${classes.join(' ')}">${r}${isRecommended ? ' ✓' : ''}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 浓缩萃取类型
+            if (constraints.available_espresso_types?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">⚡ 浓缩萃取</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_espresso_types.map(t => {
+                            const isRecommended = suggested.espresso_type === t;
+                            const isPersonaMatch = personaPrefs.espressoTypes?.includes(t);
+                            const isDefault = constraints.default_espresso_type === t;
+                            let classes = ['cust-chip'];
+                            if (isRecommended) classes.push('highlighted');
+                            else if (isPersonaMatch) classes.push('persona-match');
+                            if (isDefault) classes.push('default');
+                            return `<span class="${classes.join(' ')}">${t}${isRecommended ? ' ✓' : ''}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 甜度选项
+            if (constraints.available_sugar_levels?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">🍬 甜度</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_sugar_levels.map(s => {
+                            const isRecommended = suggested.sugar_level === s;
+                            const isPersonaMatch = personaPrefs.sugars?.includes(s);
+                            const isDefault = constraints.default_sugar_level === s;
+                            let classes = ['cust-chip'];
+                            if (isRecommended) classes.push('highlighted');
+                            else if (isPersonaMatch) classes.push('persona-match');
+                            if (isDefault) classes.push('default');
+                            return `<span class="${classes.join(' ')}">${s}${isRecommended ? ' ✓' : ''}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 奶类选项
+            if (constraints.available_milk_types?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">🥛 奶类</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_milk_types.map(m => {
+                            const isRecommended = suggested.milk_type === m;
+                            const isPersonaMatch = personaPrefs.milks?.includes(m);
+                            const isDefault = constraints.default_milk_type === m;
+                            let classes = ['cust-chip'];
+                            if (isRecommended) classes.push('highlighted');
+                            else if (isPersonaMatch) classes.push('persona-match');
+                            if (isDefault) classes.push('default');
+                            return `<span class="${classes.join(' ')}">${m}${isRecommended ? ' ✓' : ''}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 无糖风味糖浆
+            if (constraints.available_sugar_free_flavors?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">🌸 无糖风味糖浆</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_sugar_free_flavors.map(f => {
+                            const isPersonaMatch = personaPrefs.sugarFreeFlavors?.includes(f);
+                            let classes = ['cust-chip'];
+                            if (isPersonaMatch) classes.push('persona-match');
+                            return `<span class="${classes.join(' ')}">${f}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 淋酱选项
+            if (constraints.available_drizzles?.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">🍫 淋酱</div>
+                    <div class="cust-option-chips">
+                        ${constraints.available_drizzles.map(d => {
+                            const isPersonaMatch = personaPrefs.drizzles?.includes(d);
+                            let classes = ['cust-chip'];
+                            if (isPersonaMatch) classes.push('persona-match');
+                            return `<span class="${classes.join(' ')}">${d}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // 额外选项（奶油顶、浓缩份数）
+            let extras = [];
+            if (constraints.supports_whipped_cream) {
+                const isPersonaMatch = personaPrefs.whippedCream;
+                extras.push(`<span class="cust-chip ${isPersonaMatch ? 'persona-match' : ''}">可加奶油顶</span>`);
+            }
+            if (constraints.supports_espresso_adjustment) {
+                extras.push(`<span class="cust-chip">可调整浓缩份数</span>`);
+            }
+            if (constraints.supports_extra_cream) {
+                extras.push(`<span class="cust-chip">可加稀奶油</span>`);
+            }
+            if (constraints.supports_mocha_sauce) {
+                extras.push(`<span class="cust-chip">可加摩卡酱</span>`);
+            }
+
+            if (extras.length > 0) {
+                html += `<div class="cust-option-group">
+                    <div class="cust-option-label">✨ 额外选项</div>
+                    <div class="cust-option-chips">${extras.join('')}</div>
+                </div>`;
+            }
+
+            // 图例
+            html += `<div class="cust-legend">
+                <div class="cust-legend-item"><span class="cust-legend-dot recommended"></span>推荐选项</div>
+                <div class="cust-legend-item"><span class="cust-legend-dot persona"></span>人设偏好</div>
+                <div class="cust-legend-item"><span class="cust-legend-dot default"></span>默认配置</div>
+            </div>`;
+
+            html += '</div>';
+
+            return html;
+        }
+
+        // 切换客制化面板展开/收起
+        function toggleCustPanel(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                panel.classList.toggle('expanded');
+            }
+        }
+
         // 画像选择
         document.querySelectorAll('.persona-card').forEach(card => {
             card.addEventListener('click', () => {
@@ -1523,11 +1885,22 @@
                     `;
                 }
 
+                // 获取客制化约束和会员价
+                const constraints = rec.item.customization_constraints || {};
+                const memberPrice = constraints.member_discount;
+                const custPanelId = `cust-panel-${index}`;
+
+                // 构建客制化选项面板HTML
+                const custOptionsHtml = renderCustomizationOptions(constraints, suggestedCust, selectedPersona);
+
                 card.innerHTML = `
                     <div class="rec-card-header">
                         <div>
                             <div class="rec-card-title">${rec.item.name}</div>
-                            <div class="rec-card-category">${rec.item.category} · ¥${rec.item.base_price}</div>
+                            <div class="rec-card-category">
+                                ${rec.item.category} · ¥${rec.item.base_price}
+                                ${memberPrice ? `<span class="member-price-badge">⭐ 会员 ¥${memberPrice}</span>` : ''}
+                            </div>
                         </div>
                         <div class="match-score">${(rec.match_score * 100).toFixed(1)}%</div>
                     </div>
@@ -1556,6 +1929,19 @@
                     </div>
 
                     ${customizationHtml}
+
+                    ${custOptionsHtml ? `
+                    <div class="cust-options-panel" id="${custPanelId}">
+                        <div class="panel-header" onclick="toggleCustPanel('${custPanelId}')">
+                            <div class="panel-title">
+                                <span>📋 可选客制化配置</span>
+                                <span style="font-size: 10px; color: #94a3b8; font-weight: normal;">(点击展开)</span>
+                            </div>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        ${custOptionsHtml}
+                    </div>
+                    ` : ''}
 
                     <div class="rec-reason">${rec.reason || '为您精选推荐'}</div>
 

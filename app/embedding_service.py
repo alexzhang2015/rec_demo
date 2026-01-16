@@ -683,7 +683,8 @@ class EmbeddingRecommendationEngine:
                     "is_new": item.is_new,
                     "is_seasonal": item.is_seasonal,
                     "available_temperatures": [t.value for t in item.available_temperatures],
-                    "available_sizes": [s.value for s in item.available_sizes]
+                    "available_sizes": [s.value for s in item.available_sizes],
+                    "customization_constraints": item.customization_constraints.model_dump() if item.customization_constraints else None
                 },
                 "match_score": round(ranked["final_score"], 4),
                 "base_score": round(ranked["base_score"], 4),
@@ -1126,7 +1127,8 @@ class EmbeddingRecommendationEngine:
                     "is_new": item.is_new,
                     "is_seasonal": item.is_seasonal,
                     "available_temperatures": [t.value for t in item.available_temperatures],
-                    "available_sizes": [s.value for s in item.available_sizes]
+                    "available_sizes": [s.value for s in item.available_sizes],
+                    "customization_constraints": item.customization_constraints.model_dump() if item.customization_constraints else None
                 },
                 "match_score": round(ranked["final_score"], 4),
                 "base_score": round(ranked["base_score"], 4),
@@ -1381,7 +1383,8 @@ class EmbeddingRecommendationEngine:
                     "is_new": item.is_new,
                     "is_seasonal": item.is_seasonal,
                     "available_temperatures": [t.value for t in item.available_temperatures],
-                    "available_sizes": [s.value for s in item.available_sizes]
+                    "available_sizes": [s.value for s in item.available_sizes],
+                    "customization_constraints": item.customization_constraints.model_dump() if item.customization_constraints else None
                 },
                 "match_score": round(ranked["final_score"], 4),
                 "base_score": round(ranked["base_score"], 4),
