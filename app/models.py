@@ -22,39 +22,101 @@ class CupSize(str, Enum):
 
 class Temperature(str, Enum):
     """温度"""
+    EXTRA_HOT = "特别热"
     HOT = "热"
+    WARM = "微热"
     ICED = "冰"
-    WARM = "温"
+    LESS_ICE = "少冰"
+    NO_ICE = "去冰"
+    FULL_ICE = "全冰"
 
 
 class SugarLevel(str, Enum):
-    """糖度"""
-    FULL = "全糖"
-    LESS = "少糖"
-    HALF = "半糖"
-    LIGHT = "微糖"
-    NONE = "无糖"
+    """糖度/甜度选择"""
+    FULL = "经典糖"        # 标准甜度
+    ZERO_CAL = "0热量代糖"  # 0热量代糖
+    NONE = "不另外加糖"     # 不另外加糖
+    LESS = "少甜"          # Less Sweetness
+    STANDARD = "标准甜"    # Regular Sweetness
 
 
 class MilkType(str, Enum):
-    """奶类"""
+    """奶类 - 添加或更换牛奶"""
     WHOLE = "全脂牛奶"
     SKIM = "脱脂牛奶"
     OAT = "燕麦奶"
+    ALMOND = "巴旦木奶"
     SOY = "豆奶"
     COCONUT = "椰奶"
     NONE = "不加奶"
 
 
+class EspressoRoast(str, Enum):
+    """浓缩咖啡烘焙类型"""
+    CLASSIC_DARK = "经典浓缩(深烘)"
+    BLONDE = "金烘浓缩(浅烘)"
+    DECAF_DARK = "低因浓缩(深烘)"
+
+
+class EspressoType(str, Enum):
+    """浓缩咖啡萃取类型"""
+    SIGNATURE = "原萃浓缩"   # 浓郁醇香，焦糖般甜感
+    RISTRETTO = "精萃浓缩"   # 精炼萃取，倍感甜郁
+    LONG_SHOT = "满萃浓缩"   # 深度萃取，焦香饱满
+
+
+class RoomLevel(str, Enum):
+    """留位（奶量空间）"""
+    STANDARD = "标准"
+    MORE = "多"
+    EXTRA = "更多"
+
+
+class SugarFreeFlavor(str, Enum):
+    """无糖风味糖浆"""
+    VANILLA = "香草风味"
+    HAZELNUT = "榛果风味"
+    SEA_SALT_CARAMEL = "海盐焦糖风味"
+    TAHITIAN_VANILLA = "大溪地香草风味"
+    BERRY = "莓莓风味"
+    PANDAN = "糯香斑斓风味"
+
+
+class Drizzle(str, Enum):
+    """淋酱/其它"""
+    MOCHA = "摩卡淋酱"
+    CARAMEL = "焦糖风味酱"
+
+
+class WhippedCreamLevel(str, Enum):
+    """奶油顶"""
+    NONE = "不加奶油"
+    LIGHT = "加少量搅打稀奶油"
+    STANDARD = "加标准搅打稀奶油"
+
+
 class Customization(BaseModel):
     """客制化选项"""
+    # 基础选项
     cup_size: CupSize = CupSize.GRANDE
     temperature: Temperature = Temperature.ICED
     sugar_level: SugarLevel = SugarLevel.FULL
     milk_type: MilkType = MilkType.WHOLE
-    extra_shot: bool = False  # 加浓缩
-    whipped_cream: bool = False  # 奶油
-    syrup: Optional[str] = None  # 糖浆风味
+
+    # 浓缩咖啡选项
+    espresso_roast: Optional[EspressoRoast] = None  # 烘焙类型
+    espresso_type: Optional[EspressoType] = None    # 萃取类型
+    espresso_shots: int = 2                          # 浓缩份数
+
+    # 风味与添加
+    sugar_free_flavor: Optional[SugarFreeFlavor] = None  # 无糖风味
+    whipped_cream: WhippedCreamLevel = WhippedCreamLevel.NONE  # 奶油顶
+    drizzle: Optional[Drizzle] = None               # 淋酱
+    room_level: RoomLevel = RoomLevel.STANDARD      # 留位
+
+    # 饮品主体添加
+    extra_cream: bool = False    # 稀奶油
+    mocha_sauce: bool = False    # 摩卡酱
 
 
 class CustomizationConstraints(BaseModel):
@@ -62,16 +124,31 @@ class CustomizationConstraints(BaseModel):
     # 可用选项（None 表示该选项不适用于此商品）
     available_sugar_levels: Optional[list[SugarLevel]] = None
     available_milk_types: Optional[list[MilkType]] = None
+    available_temperatures: Optional[list[Temperature]] = None
 
-    # 功能支持
-    supports_extra_shot: bool = False  # 是否支持加浓缩
-    supports_whipped_cream: bool = False  # 是否支持奶油顶
-    available_syrups: Optional[list[str]] = None  # 可用糖浆列表
+    # 浓缩咖啡选项
+    available_espresso_roasts: Optional[list[EspressoRoast]] = None
+    available_espresso_types: Optional[list[EspressoType]] = None
+    supports_espresso_adjustment: bool = False  # 是否支持调整浓缩份数
+    default_espresso_shots: int = 2
+
+    # 风味与添加
+    available_sugar_free_flavors: Optional[list[SugarFreeFlavor]] = None
+    available_drizzles: Optional[list[Drizzle]] = None
+    supports_whipped_cream: bool = False
+    supports_room_adjustment: bool = False  # 是否支持调整留位
+    supports_extra_cream: bool = False      # 是否支持添加稀奶油
+    supports_mocha_sauce: bool = False      # 是否支持添加摩卡酱
 
     # 默认/推荐配置
     default_temperature: Optional[Temperature] = None
     default_sugar_level: Optional[SugarLevel] = None
     default_milk_type: Optional[MilkType] = None
+    default_espresso_roast: Optional[EspressoRoast] = None
+    default_espresso_type: Optional[EspressoType] = None
+
+    # 会员优惠信息
+    member_discount: Optional[float] = None  # 金星会员折扣价
 
 
 class MenuItem(BaseModel):

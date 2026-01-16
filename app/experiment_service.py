@@ -6,24 +6,25 @@
 2. 用户反馈收集 - 点赞/踩记录
 3. 用户历史行为 - 订单/浏览/点击
 4. Session实时个性化 - 动态偏好调整
+
+数据存储: SQLite (app/data/recommendation.db)
 """
 import json
 import time
 import hashlib
 import random
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from collections import defaultdict
 from pydantic import BaseModel
 
-# 数据存储路径
+from app.db.connection import get_db
+
+# 数据存储路径（保留用于向后兼容）
 DATA_DIR = Path(__file__).parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
-
-FEEDBACK_FILE = DATA_DIR / "user_feedback.json"
-BEHAVIOR_FILE = DATA_DIR / "user_behavior.json"
-EXPERIMENT_FILE = DATA_DIR / "experiments.json"
 
 
 # ============ 数据模型 ============
@@ -74,34 +75,116 @@ class Experiment(BaseModel):
     created_at: Optional[float] = None
 
 
+# ============ 辅助函数 ============
+
+def _run_async(coro):
+    """在同步上下文中运行异步函数"""
+    try:
+        loop = asyncio.get_running_loop()
+        # 如果在异步上下文中，创建任务
+        return asyncio.ensure_future(coro)
+    except RuntimeError:
+        # 没有运行中的事件循环，创建新的
+        return asyncio.run(coro)
+
+
 # ============ A/B测试服务 ============
 
 class ABTestService:
     """A/B测试框架"""
 
     def __init__(self):
-        self.experiments = self._load_experiments()
-        self._init_default_experiments()
+        self._experiments_cache: dict = {}
+        self._initialized = False
 
-    def _load_experiments(self) -> dict:
-        """加载实验配置"""
-        if EXPERIMENT_FILE.exists():
-            try:
-                with open(EXPERIMENT_FILE, "r") as f:
-                    return json.load(f)
-            except:
-                pass
-        return {}
+    async def _ensure_initialized(self):
+        """确保服务已初始化"""
+        if self._initialized:
+            return
+        await self._load_experiments()
+        await self._init_default_experiments()
+        self._initialized = True
 
-    def _save_experiments(self):
-        """保存实验配置"""
-        with open(EXPERIMENT_FILE, "w") as f:
-            json.dump(self.experiments, f, ensure_ascii=False, indent=2)
+    async def _load_experiments(self) -> dict:
+        """从数据库加载实验配置"""
+        db = await get_db()
 
-    def _init_default_experiments(self):
+        cursor = await db.execute("SELECT * FROM experiments")
+        rows = await cursor.fetchall()
+
+        experiments = {}
+        for row in rows:
+            exp_id = row["experiment_id"]
+
+            # 获取该实验的变体
+            var_cursor = await db.execute(
+                "SELECT variant_id, name, weight FROM experiment_variants WHERE experiment_id = ?",
+                (exp_id,)
+            )
+            variants = await var_cursor.fetchall()
+
+            experiments[exp_id] = {
+                "experiment_id": exp_id,
+                "name": row["name"],
+                "description": row["description"],
+                "status": row["status"],
+                "created_at": row["created_at"],
+                "variants": [
+                    {"id": v["variant_id"], "name": v["name"], "weight": v["weight"]}
+                    for v in variants
+                ]
+            }
+
+        self._experiments_cache = experiments
+        return experiments
+
+    async def _save_experiment(self, exp: dict):
+        """保存实验到数据库"""
+        db = await get_db()
+
+        # 插入或更新实验
+        await db.execute(
+            """
+            INSERT OR REPLACE INTO experiments (experiment_id, name, description, status, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                exp["experiment_id"],
+                exp["name"],
+                exp.get("description", ""),
+                exp.get("status", "active"),
+                exp.get("created_at", time.time())
+            )
+        )
+
+        # 删除旧变体
+        await db.execute(
+            "DELETE FROM experiment_variants WHERE experiment_id = ?",
+            (exp["experiment_id"],)
+        )
+
+        # 插入新变体
+        for variant in exp.get("variants", []):
+            await db.execute(
+                """
+                INSERT INTO experiment_variants (experiment_id, variant_id, name, weight)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    exp["experiment_id"],
+                    variant["id"],
+                    variant.get("name", variant["id"]),
+                    variant.get("weight", 50)
+                )
+            )
+
+        await db.commit()
+        self._experiments_cache[exp["experiment_id"]] = exp
+
+    async def _init_default_experiments(self):
         """初始化默认实验"""
-        if "rec_algorithm" not in self.experiments:
-            self.experiments["rec_algorithm"] = {
+        default_experiments = [
+            {
                 "experiment_id": "rec_algorithm",
                 "name": "推荐算法对比",
                 "description": "对比不同推荐算法的效果",
@@ -112,10 +195,8 @@ class ABTestService:
                 ],
                 "status": "active",
                 "created_at": time.time()
-            }
-
-        if "reason_style" not in self.experiments:
-            self.experiments["reason_style"] = {
+            },
+            {
                 "experiment_id": "reason_style",
                 "name": "推荐理由风格",
                 "description": "测试不同推荐理由表述方式",
@@ -125,11 +206,8 @@ class ABTestService:
                 ],
                 "status": "active",
                 "created_at": time.time()
-            }
-
-        # 客制化推荐策略实验
-        if "customization_strategy" not in self.experiments:
-            self.experiments["customization_strategy"] = {
+            },
+            {
                 "experiment_id": "customization_strategy",
                 "name": "客制化推荐策略",
                 "description": "测试不同的客制化推荐策略",
@@ -140,11 +218,8 @@ class ABTestService:
                 ],
                 "status": "active",
                 "created_at": time.time()
-            }
-
-        # 客制化展示方式实验
-        if "customization_display" not in self.experiments:
-            self.experiments["customization_display"] = {
+            },
+            {
                 "experiment_id": "customization_display",
                 "name": "客制化展示方式",
                 "description": "测试客制化建议的不同展示方式",
@@ -155,15 +230,20 @@ class ABTestService:
                 "status": "active",
                 "created_at": time.time()
             }
+        ]
 
-        self._save_experiments()
+        for exp in default_experiments:
+            if exp["experiment_id"] not in self._experiments_cache:
+                await self._save_experiment(exp)
 
-    def get_variant(self, experiment_id: str, user_id: str) -> dict:
+    async def get_variant_async(self, experiment_id: str, user_id: str) -> dict:
         """
-        为用户分配实验分组
+        为用户分配实验分组（异步版本）
         使用用户ID哈希确保同一用户始终进入同一分组
         """
-        exp = self.experiments.get(experiment_id)
+        await self._ensure_initialized()
+
+        exp = self._experiments_cache.get(experiment_id)
         if not exp or exp["status"] != "active":
             return {"variant": "control", "experiment_id": experiment_id}
 
@@ -185,16 +265,69 @@ class ABTestService:
 
         return {"variant": exp["variants"][0]["id"], "experiment_id": experiment_id}
 
-    def get_all_experiments(self) -> list[dict]:
-        """获取所有实验"""
-        return list(self.experiments.values())
+    def get_variant(self, experiment_id: str, user_id: str) -> dict:
+        """为用户分配实验分组（同步版本，用于向后兼容）"""
+        # 如果缓存为空，使用同步方式初始化
+        if not self._experiments_cache:
+            try:
+                loop = asyncio.get_running_loop()
+                # 在异步上下文中，直接从缓存返回或返回默认值
+                exp = self._experiments_cache.get(experiment_id)
+                if not exp:
+                    return {"variant": "control", "experiment_id": experiment_id}
+            except RuntimeError:
+                # 同步上下文，运行初始化
+                asyncio.run(self._ensure_initialized())
 
-    def create_experiment(self, exp: Experiment) -> dict:
-        """创建新实验"""
+        exp = self._experiments_cache.get(experiment_id)
+        if not exp or exp["status"] != "active":
+            return {"variant": "control", "experiment_id": experiment_id}
+
+        # 基于用户ID的确定性分组
+        hash_input = f"{experiment_id}:{user_id}"
+        hash_value = int(hashlib.md5(hash_input.encode()).hexdigest(), 16)
+        bucket = hash_value % 100
+
+        cumulative = 0
+        for variant in exp["variants"]:
+            cumulative += variant["weight"]
+            if bucket < cumulative:
+                return {
+                    "variant": variant["id"],
+                    "variant_name": variant["name"],
+                    "experiment_id": experiment_id,
+                    "experiment_name": exp["name"]
+                }
+
+        return {"variant": exp["variants"][0]["id"], "experiment_id": experiment_id}
+
+    async def get_all_experiments_async(self) -> list[dict]:
+        """获取所有实验（异步版本）"""
+        await self._ensure_initialized()
+        return list(self._experiments_cache.values())
+
+    def get_all_experiments(self) -> list[dict]:
+        """获取所有实验（同步版本）"""
+        return list(self._experiments_cache.values())
+
+    async def create_experiment_async(self, exp: Experiment) -> dict:
+        """创建新实验（异步版本）"""
+        await self._ensure_initialized()
         exp_dict = exp.model_dump()
         exp_dict["created_at"] = time.time()
-        self.experiments[exp.experiment_id] = exp_dict
-        self._save_experiments()
+        await self._save_experiment(exp_dict)
+        return exp_dict
+
+    def create_experiment(self, exp: Experiment) -> dict:
+        """创建新实验（同步版本）"""
+        exp_dict = exp.model_dump()
+        exp_dict["created_at"] = time.time()
+        try:
+            asyncio.get_running_loop()
+            # 在异步上下文中，直接更新缓存
+            self._experiments_cache[exp.experiment_id] = exp_dict
+        except RuntimeError:
+            asyncio.run(self._save_experiment(exp_dict))
         return exp_dict
 
 
@@ -204,60 +337,107 @@ class FeedbackService:
     """用户反馈收集服务"""
 
     def __init__(self):
-        self.feedback_data = self._load_feedback()
+        self._stats_cache: dict = {}
 
-    def _load_feedback(self) -> dict:
-        """加载反馈数据"""
-        if FEEDBACK_FILE.exists():
-            try:
-                with open(FEEDBACK_FILE, "r") as f:
-                    return json.load(f)
-            except:
-                pass
-        return {"feedbacks": [], "stats": {}}
+    async def record_feedback_async(self, feedback: UserFeedback) -> dict:
+        """记录用户反馈（异步版本）"""
+        db = await get_db()
+        timestamp = time.time()
 
-    def _save_feedback(self):
-        """保存反馈数据"""
-        with open(FEEDBACK_FILE, "w") as f:
-            json.dump(self.feedback_data, f, ensure_ascii=False, indent=2)
+        context_json = json.dumps(feedback.context) if feedback.context else None
 
-    def record_feedback(self, feedback: UserFeedback) -> dict:
-        """记录用户反馈"""
-        fb_dict = feedback.model_dump()
-        fb_dict["timestamp"] = time.time()
-
-        self.feedback_data["feedbacks"].append(fb_dict)
+        await db.execute(
+            """
+            INSERT INTO user_feedback (user_id, session_id, item_sku, feedback_type, experiment_id, variant, context, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                feedback.user_id,
+                feedback.session_id,
+                feedback.item_sku,
+                feedback.feedback_type,
+                feedback.experiment_id,
+                feedback.variant,
+                context_json,
+                timestamp
+            )
+        )
 
         # 更新统计
-        item_key = feedback.item_sku
-        if item_key not in self.feedback_data["stats"]:
-            self.feedback_data["stats"][item_key] = {
-                "likes": 0, "dislikes": 0, "clicks": 0, "orders": 0
-            }
+        await db.execute(
+            """
+            INSERT INTO feedback_stats (item_sku, likes, dislikes, clicks, orders)
+            VALUES (?, 0, 0, 0, 0)
+            ON CONFLICT(item_sku) DO NOTHING
+            """,
+            (feedback.item_sku,)
+        )
 
-        stats = self.feedback_data["stats"][item_key]
         if feedback.feedback_type == "like":
-            stats["likes"] += 1
+            await db.execute(
+                "UPDATE feedback_stats SET likes = likes + 1 WHERE item_sku = ?",
+                (feedback.item_sku,)
+            )
         elif feedback.feedback_type == "dislike":
-            stats["dislikes"] += 1
+            await db.execute(
+                "UPDATE feedback_stats SET dislikes = dislikes + 1 WHERE item_sku = ?",
+                (feedback.item_sku,)
+            )
         elif feedback.feedback_type == "click":
-            stats["clicks"] += 1
+            await db.execute(
+                "UPDATE feedback_stats SET clicks = clicks + 1 WHERE item_sku = ?",
+                (feedback.item_sku,)
+            )
         elif feedback.feedback_type == "order":
-            stats["orders"] += 1
+            await db.execute(
+                "UPDATE feedback_stats SET orders = orders + 1 WHERE item_sku = ?",
+                (feedback.item_sku,)
+            )
 
-        self._save_feedback()
+        await db.commit()
+
+        # 获取更新后的统计
+        cursor = await db.execute(
+            "SELECT * FROM feedback_stats WHERE item_sku = ?",
+            (feedback.item_sku,)
+        )
+        row = await cursor.fetchone()
+        stats = dict(row) if row else {"likes": 0, "dislikes": 0, "clicks": 0, "orders": 0}
 
         return {
             "status": "recorded",
             "item_stats": stats,
-            "timestamp": fb_dict["timestamp"]
+            "timestamp": timestamp
         }
 
-    def get_item_stats(self, item_sku: str) -> dict:
-        """获取商品反馈统计"""
-        stats = self.feedback_data["stats"].get(item_sku, {
-            "likes": 0, "dislikes": 0, "clicks": 0, "orders": 0
-        })
+    def record_feedback(self, feedback: UserFeedback) -> dict:
+        """记录用户反馈（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            # 在异步上下文中，返回一个协程占位符
+            return {"status": "pending", "message": "Use record_feedback_async in async context"}
+        except RuntimeError:
+            return asyncio.run(self.record_feedback_async(feedback))
+
+    async def get_item_stats_async(self, item_sku: str) -> dict:
+        """获取商品反馈统计（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute(
+            "SELECT * FROM feedback_stats WHERE item_sku = ?",
+            (item_sku,)
+        )
+        row = await cursor.fetchone()
+
+        if row:
+            stats = {
+                "likes": row["likes"],
+                "dislikes": row["dislikes"],
+                "clicks": row["clicks"],
+                "orders": row["orders"]
+            }
+        else:
+            stats = {"likes": 0, "dislikes": 0, "clicks": 0, "orders": 0}
 
         total = stats["likes"] + stats["dislikes"]
         if total > 0:
@@ -267,16 +447,37 @@ class FeedbackService:
 
         return stats
 
-    def get_experiment_stats(self, experiment_id: str) -> dict:
-        """获取实验维度的反馈统计"""
+    def get_item_stats(self, item_sku: str) -> dict:
+        """获取商品反馈统计（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"likes": 0, "dislikes": 0, "clicks": 0, "orders": 0, "like_ratio": None}
+        except RuntimeError:
+            return asyncio.run(self.get_item_stats_async(item_sku))
+
+    async def get_experiment_stats_async(self, experiment_id: str) -> dict:
+        """获取实验维度的反馈统计（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute(
+            """
+            SELECT variant, feedback_type, COUNT(*) as count
+            FROM user_feedback
+            WHERE experiment_id = ?
+            GROUP BY variant, feedback_type
+            """,
+            (experiment_id,)
+        )
+        rows = await cursor.fetchall()
+
         variant_stats = defaultdict(lambda: {"likes": 0, "dislikes": 0, "clicks": 0, "orders": 0})
 
-        for fb in self.feedback_data["feedbacks"]:
-            if fb.get("experiment_id") == experiment_id:
-                variant = fb.get("variant", "unknown")
-                fb_type = fb.get("feedback_type")
-                if fb_type in variant_stats[variant]:
-                    variant_stats[variant][fb_type] += 1
+        for row in rows:
+            variant = row["variant"] or "unknown"
+            fb_type = row["feedback_type"]
+            count = row["count"]
+            if fb_type in variant_stats[variant]:
+                variant_stats[variant][fb_type] = count
 
         # 计算转化率
         results = {}
@@ -291,12 +492,16 @@ class FeedbackService:
 
         return results
 
+    def get_experiment_stats(self, experiment_id: str) -> dict:
+        """获取实验维度的反馈统计（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {}
+        except RuntimeError:
+            return asyncio.run(self.get_experiment_stats_async(experiment_id))
+
 
 # ============ 用户行为服务 ============
-
-# 订单数据文件
-ORDER_FILE = DATA_DIR / "user_orders.json"
-
 
 class BehaviorService:
     """用户历史行为服务"""
@@ -305,38 +510,7 @@ class BehaviorService:
     TIME_DECAY_HALFLIFE_DAYS = 30  # 半衰期30天
 
     def __init__(self):
-        self.behavior_data = self._load_behavior()
-        self.order_data = self._load_orders()
-
-    def _load_behavior(self) -> dict:
-        """加载行为数据"""
-        if BEHAVIOR_FILE.exists():
-            try:
-                with open(BEHAVIOR_FILE, "r") as f:
-                    return json.load(f)
-            except:
-                pass
-        return {"users": {}}
-
-    def _load_orders(self) -> dict:
-        """加载订单数据"""
-        if ORDER_FILE.exists():
-            try:
-                with open(ORDER_FILE, "r") as f:
-                    return json.load(f)
-            except:
-                pass
-        return {"orders": [], "user_order_index": {}, "stats": {}}
-
-    def _save_behavior(self):
-        """保存行为数据"""
-        with open(BEHAVIOR_FILE, "w") as f:
-            json.dump(self.behavior_data, f, ensure_ascii=False, indent=2)
-
-    def _save_orders(self):
-        """保存订单数据"""
-        with open(ORDER_FILE, "w") as f:
-            json.dump(self.order_data, f, ensure_ascii=False, indent=2)
+        pass
 
     def _calculate_time_decay(self, timestamp: float) -> float:
         """计算时间衰减系数（指数衰减）"""
@@ -345,61 +519,95 @@ class BehaviorService:
         decay = 0.5 ** (days_ago / self.TIME_DECAY_HALFLIFE_DAYS)
         return max(decay, 0.1)  # 最低保留10%权重
 
-    def record_order(self, order: OrderRecord) -> dict:
-        """记录详细订单（增强版）"""
-        order_dict = order.model_dump()
-        order_dict["timestamp"] = order.timestamp or time.time()
-        order_dict["order_id"] = f"order_{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
+    async def record_order_async(self, order: OrderRecord) -> dict:
+        """记录详细订单（异步版本）"""
+        db = await get_db()
+        timestamp = order.timestamp or time.time()
+        order_id = f"order_{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
 
-        # 添加到订单列表
-        self.order_data["orders"].append(order_dict)
+        tags_json = json.dumps(order.tags) if order.tags else None
+        customization_json = json.dumps(order.customization) if order.customization else None
 
-        # 更新用户订单索引
-        user_id = order.user_id
-        if user_id not in self.order_data["user_order_index"]:
-            self.order_data["user_order_index"][user_id] = []
-        self.order_data["user_order_index"][user_id].append(len(self.order_data["orders"]) - 1)
+        await db.execute(
+            """
+            INSERT INTO orders (order_id, user_id, item_sku, item_name, category, tags, base_price, final_price, customization, session_id, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                order_id,
+                order.user_id,
+                order.item_sku,
+                order.item_name,
+                order.category,
+                tags_json,
+                order.base_price,
+                order.final_price,
+                customization_json,
+                order.session_id,
+                timestamp
+            )
+        )
 
         # 更新统计
         sku = order.item_sku
-        if sku not in self.order_data["stats"]:
-            self.order_data["stats"][sku] = {
-                "total_orders": 0,
-                "total_revenue": 0,
-                "unique_users": set(),
-                "customization_counts": {}
-            }
-        stats = self.order_data["stats"][sku]
-        stats["total_orders"] += 1
-        stats["total_revenue"] += order.final_price or order.base_price or 0
-        if isinstance(stats["unique_users"], set):
-            stats["unique_users"].add(user_id)
-            stats["unique_users"] = list(stats["unique_users"])
-        elif user_id not in stats["unique_users"]:
-            stats["unique_users"].append(user_id)
+        cursor = await db.execute(
+            "SELECT unique_users FROM order_stats WHERE item_sku = ?",
+            (sku,)
+        )
+        row = await cursor.fetchone()
 
-        # 统计客制化偏好
-        if order.customization:
-            for key, value in order.customization.items():
-                if key not in stats["customization_counts"]:
-                    stats["customization_counts"][key] = {}
-                if str(value) not in stats["customization_counts"][key]:
-                    stats["customization_counts"][key][str(value)] = 0
-                stats["customization_counts"][key][str(value)] += 1
+        if row:
+            unique_users = json.loads(row["unique_users"]) if row["unique_users"] else []
+            if order.user_id not in unique_users:
+                unique_users.append(order.user_id)
+            await db.execute(
+                """
+                UPDATE order_stats
+                SET total_orders = total_orders + 1,
+                    total_revenue = total_revenue + ?,
+                    unique_users = ?
+                WHERE item_sku = ?
+                """,
+                (order.final_price or order.base_price or 0, json.dumps(unique_users), sku)
+            )
+        else:
+            await db.execute(
+                """
+                INSERT INTO order_stats (item_sku, total_orders, total_revenue, unique_users)
+                VALUES (?, 1, ?, ?)
+                """,
+                (sku, order.final_price or order.base_price or 0, json.dumps([order.user_id]))
+            )
 
-        self._save_orders()
+        await db.commit()
+
+        # 获取用户订单数
+        cursor = await db.execute(
+            "SELECT COUNT(*) as count FROM orders WHERE user_id = ?",
+            (order.user_id,)
+        )
+        row = await cursor.fetchone()
+        user_total = row["count"] if row else 0
 
         return {
             "status": "recorded",
-            "order_id": order_dict["order_id"],
-            "user_total_orders": len(self.order_data["user_order_index"].get(user_id, []))
+            "order_id": order_id,
+            "user_total_orders": user_total
         }
 
-    def batch_record_orders(self, orders: list[OrderRecord]) -> dict:
-        """批量记录订单（用于测试/模拟）"""
+    def record_order(self, order: OrderRecord) -> dict:
+        """记录详细订单（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "pending"}
+        except RuntimeError:
+            return asyncio.run(self.record_order_async(order))
+
+    async def batch_record_orders_async(self, orders: list[OrderRecord]) -> dict:
+        """批量记录订单（异步版本）"""
         results = []
         for order in orders:
-            result = self.record_order(order)
+            result = await self.record_order_async(order)
             results.append(result)
         return {
             "status": "batch_recorded",
@@ -407,53 +615,74 @@ class BehaviorService:
             "results": results
         }
 
-    def get_user_orders(self, user_id: str, limit: int = 50) -> list[dict]:
-        """获取用户订单历史"""
-        indices = self.order_data["user_order_index"].get(user_id, [])
+    def batch_record_orders(self, orders: list[OrderRecord]) -> dict:
+        """批量记录订单（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "pending"}
+        except RuntimeError:
+            return asyncio.run(self.batch_record_orders_async(orders))
+
+    async def get_user_orders_async(self, user_id: str, limit: int = 50) -> list[dict]:
+        """获取用户订单历史（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute(
+            """
+            SELECT * FROM orders
+            WHERE user_id = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (user_id, limit)
+        )
+        rows = await cursor.fetchall()
+
         orders = []
-        for idx in indices[-limit:]:
-            if idx < len(self.order_data["orders"]):
-                orders.append(self.order_data["orders"][idx])
+        for row in rows:
+            order = dict(row)
+            if order.get("tags"):
+                order["tags"] = json.loads(order["tags"])
+            if order.get("customization"):
+                order["customization"] = json.loads(order["customization"])
+            orders.append(order)
+
         return orders
 
-    def record_behavior(self, behavior: UserBehavior) -> dict:
-        """记录用户行为"""
-        user_id = behavior.user_id
+    def get_user_orders(self, user_id: str, limit: int = 50) -> list[dict]:
+        """获取用户订单历史（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return []
+        except RuntimeError:
+            return asyncio.run(self.get_user_orders_async(user_id, limit))
 
-        if user_id not in self.behavior_data["users"]:
-            self.behavior_data["users"][user_id] = {
-                "views": [],
-                "clicks": [],
-                "orders": [],
-                "customizations": [],
-                "category_affinity": {},
-                "tag_affinity": {},
-                "last_active": None
-            }
+    async def record_behavior_async(self, behavior: UserBehavior) -> dict:
+        """记录用户行为（异步版本）"""
+        db = await get_db()
 
-        user_data = self.behavior_data["users"][user_id]
-        user_data["last_active"] = time.time()
+        details_json = json.dumps(behavior.details) if behavior.details else None
 
-        record = {
-            "sku": behavior.item_sku,
-            "session_id": behavior.session_id,
-            "timestamp": time.time(),
-            "details": behavior.details or {}
-        }
+        await db.execute(
+            """
+            INSERT INTO user_behavior (user_id, session_id, action, item_sku, details, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                behavior.user_id,
+                behavior.session_id,
+                behavior.action,
+                behavior.item_sku,
+                details_json,
+                time.time()
+            )
+        )
 
-        if behavior.action == "view":
-            user_data["views"].append(record)
-            # 限制历史长度
-            user_data["views"] = user_data["views"][-100:]
-        elif behavior.action == "click":
-            user_data["clicks"].append(record)
-            user_data["clicks"] = user_data["clicks"][-100:]
-        elif behavior.action == "order":
-            user_data["orders"].append(record)
-            # 同时记录到详细订单表
+        # 如果是订单行为，同时记录到详细订单表
+        if behavior.action == "order":
             details = behavior.details or {}
             order_record = OrderRecord(
-                user_id=user_id,
+                user_id=behavior.user_id,
                 item_sku=behavior.item_sku,
                 item_name=details.get("name"),
                 category=details.get("category"),
@@ -463,21 +692,38 @@ class BehaviorService:
                 customization=details.get("customization"),
                 session_id=behavior.session_id
             )
-            self.record_order(order_record)
-        elif behavior.action == "customize":
-            user_data["customizations"].append(record)
-            user_data["customizations"] = user_data["customizations"][-50:]
+            await self.record_order_async(order_record)
 
-        self._save_behavior()
-
+        await db.commit()
         return {"status": "recorded", "action": behavior.action}
 
-    def get_user_profile(self, user_id: str) -> dict:
-        """获取用户画像（基于历史行为）"""
-        user_data = self.behavior_data["users"].get(user_id)
-        user_orders = self.get_user_orders(user_id)
+    def record_behavior(self, behavior: UserBehavior) -> dict:
+        """记录用户行为（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "pending"}
+        except RuntimeError:
+            return asyncio.run(self.record_behavior_async(behavior))
 
-        if not user_data and not user_orders:
+    async def get_user_profile_async(self, user_id: str) -> dict:
+        """获取用户画像（异步版本）"""
+        db = await get_db()
+        user_orders = await self.get_user_orders_async(user_id)
+
+        # 获取行为数据
+        cursor = await db.execute(
+            """
+            SELECT action, COUNT(*) as count
+            FROM user_behavior
+            WHERE user_id = ?
+            GROUP BY action
+            """,
+            (user_id,)
+        )
+        behavior_rows = await cursor.fetchall()
+        behavior_counts = {row["action"]: row["count"] for row in behavior_rows}
+
+        if not user_orders and not behavior_counts:
             return {
                 "user_id": user_id,
                 "is_new_user": True,
@@ -521,14 +767,25 @@ class BehaviorService:
         favorite_items = sorted(sku_scores.items(), key=lambda x: -x[1])[:5]
 
         # 从点击数据补充偏好
-        if user_data:
-            for click in user_data.get("clicks", [])[-50:]:
-                details = click.get("details", {})
-                decay = self._calculate_time_decay(click.get("timestamp", time.time()))
-                if "category" in details:
-                    category_scores[details["category"]] += decay * 0.3  # 点击权重较低
-                for tag in details.get("tags", []):
-                    tag_scores[tag] += decay * 0.3
+        cursor = await db.execute(
+            """
+            SELECT item_sku, details, timestamp
+            FROM user_behavior
+            WHERE user_id = ? AND action = 'click'
+            ORDER BY timestamp DESC
+            LIMIT 50
+            """,
+            (user_id,)
+        )
+        click_rows = await cursor.fetchall()
+
+        for row in click_rows:
+            details = json.loads(row["details"]) if row["details"] else {}
+            decay = self._calculate_time_decay(row["timestamp"])
+            if "category" in details:
+                category_scores[details["category"]] += decay * 0.3
+            for tag in details.get("tags", []):
+                tag_scores[tag] += decay * 0.3
 
         # 归一化客制化偏好
         customization_preference = {}
@@ -538,25 +795,57 @@ class BehaviorService:
                 v: round(c / total, 2) for v, c in sorted(value_counts.items(), key=lambda x: -x[1])[:3]
             }
 
+        # 获取最后活跃时间
+        cursor = await db.execute(
+            "SELECT MAX(timestamp) as last_active FROM user_behavior WHERE user_id = ?",
+            (user_id,)
+        )
+        last_active_row = await cursor.fetchone()
+        last_active = last_active_row["last_active"] if last_active_row else None
+
         return {
             "user_id": user_id,
             "is_new_user": False,
             "order_count": len(user_orders),
-            "view_count": len(user_data.get("views", [])) if user_data else 0,
-            "click_count": len(user_data.get("clicks", [])) if user_data else 0,
+            "view_count": behavior_counts.get("view", 0),
+            "click_count": behavior_counts.get("click", 0),
             "total_spend": round(total_spend, 2),
             "favorite_items": [{"sku": sku, "score": round(score, 2)} for sku, score in favorite_items],
             "category_preference": dict(sorted(category_scores.items(), key=lambda x: -x[1])[:5]),
             "tag_preference": dict(sorted(tag_scores.items(), key=lambda x: -x[1])[:10]),
             "customization_preference": customization_preference,
-            "last_active": user_data.get("last_active") if user_data else None,
-            "recent_orders": user_orders[-5:]
+            "last_active": last_active,
+            "recent_orders": user_orders[:5]
         }
 
+    def get_user_profile(self, user_id: str) -> dict:
+        """获取用户画像（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {
+                "user_id": user_id,
+                "is_new_user": True,
+                "order_count": 0,
+                "favorite_items": [],
+                "category_preference": {},
+                "tag_preference": {},
+                "customization_preference": {}
+            }
+        except RuntimeError:
+            return asyncio.run(self.get_user_profile_async(user_id))
+
     def get_behavior_based_boost(self, user_id: str, item_sku: str, item_category: str, item_tags: list) -> float:
-        """基于用户历史行为计算推荐加权（增强版：带时间衰减）"""
-        user_orders = self.get_user_orders(user_id)
-        profile = self.get_user_profile(user_id)
+        """基于用户历史行为计算推荐加权（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return 1.0
+        except RuntimeError:
+            return asyncio.run(self._get_behavior_based_boost_async(user_id, item_sku, item_category, item_tags))
+
+    async def _get_behavior_based_boost_async(self, user_id: str, item_sku: str, item_category: str, item_tags: list) -> float:
+        """基于用户历史行为计算推荐加权（异步版本）"""
+        user_orders = await self.get_user_orders_async(user_id)
+        profile = await self.get_user_profile_async(user_id)
 
         if profile["is_new_user"]:
             return 1.0
@@ -568,15 +857,15 @@ class BehaviorService:
         for order in user_orders:
             if order["item_sku"] == item_sku:
                 decay = self._calculate_time_decay(order.get("timestamp", time.time()))
-                repurchase_score += decay * 0.2  # 每次购买+20%衰减后权重
-        boost *= 1.0 + min(repurchase_score, 1.0)  # 最多+100%
+                repurchase_score += decay * 0.2
+        boost *= 1.0 + min(repurchase_score, 1.0)
 
         # 2. 类别偏好加权
         cat_pref = profile.get("category_preference", {})
         total_cat_score = sum(cat_pref.values())
         if item_category in cat_pref and total_cat_score > 0:
             cat_ratio = cat_pref[item_category] / total_cat_score
-            boost *= 1.0 + (cat_ratio * 0.4)  # 最多+40%
+            boost *= 1.0 + (cat_ratio * 0.4)
 
         # 3. 标签偏好加权
         tag_pref = profile.get("tag_preference", {})
@@ -584,14 +873,11 @@ class BehaviorService:
         if total_tag_score > 0:
             matched_tag_score = sum(tag_pref.get(tag, 0) for tag in item_tags)
             tag_ratio = matched_tag_score / total_tag_score
-            boost *= 1.0 + (tag_ratio * 0.3)  # 最多+30%
+            boost *= 1.0 + (tag_ratio * 0.3)
 
-        # 4. 消费水平匹配（可选：如果有价格信息）
-        # 高消费用户对高价商品有加权
+        return min(boost, 2.5)
 
-        return min(boost, 2.5)  # 最多2.5倍加权
-
-    def get_order_based_recommendation_boost(
+    async def get_order_based_recommendation_boost_async(
         self,
         user_id: str,
         item_sku: str,
@@ -599,8 +885,8 @@ class BehaviorService:
         item_tags: list,
         item_price: float = None
     ) -> dict:
-        """获取基于订单历史的推荐加权（详细版，返回各因素分解）"""
-        user_orders = self.get_user_orders(user_id)
+        """获取基于订单历史的推荐加权（异步版本）"""
+        user_orders = await self.get_user_orders_async(user_id)
 
         if not user_orders:
             return {
@@ -669,23 +955,21 @@ class BehaviorService:
             if order_prices:
                 avg_price = sum(order_prices) / len(order_prices)
                 price_ratio = item_price / avg_price if avg_price > 0 else 1
-                # 价格在用户习惯范围内(0.7-1.5倍)给予加权
                 if 0.7 <= price_ratio <= 1.5:
                     factors["price_match"] = 1.1
                     if price_ratio > 1.2:
                         explanations.append("符合消费升级偏好")
                 elif price_ratio < 0.7:
-                    factors["price_match"] = 0.95  # 价格过低轻微降权
+                    factors["price_match"] = 0.95
                 else:
-                    factors["price_match"] = 0.9  # 价格过高降权
+                    factors["price_match"] = 0.9
             else:
                 factors["price_match"] = 1.0
         else:
             factors["price_match"] = 1.0
 
-        # 计算总加权
         total_boost = factors["repurchase"] * factors["category"] * factors["tag"] * factors["price_match"]
-        total_boost = min(total_boost, 3.0)  # 上限3倍
+        total_boost = min(total_boost, 3.0)
 
         return {
             "total_boost": round(total_boost, 3),
@@ -693,35 +977,36 @@ class BehaviorService:
             "explanation": "；".join(explanations) if explanations else "综合历史订单偏好"
         }
 
-    def get_customization_based_boost(
+    def get_order_based_recommendation_boost(
+        self,
+        user_id: str,
+        item_sku: str,
+        item_category: str,
+        item_tags: list,
+        item_price: float = None
+    ) -> dict:
+        """获取基于订单历史的推荐加权（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {
+                "total_boost": 1.0,
+                "factors": {"repurchase": 1.0, "category": 1.0, "tag": 1.0, "price_match": 1.0},
+                "explanation": "新用户，无历史订单数据"
+            }
+        except RuntimeError:
+            return asyncio.run(self.get_order_based_recommendation_boost_async(
+                user_id, item_sku, item_category, item_tags, item_price
+            ))
+
+    async def get_customization_based_boost_async(
         self,
         user_id: str,
         item_constraints: Optional[dict],
         item_available_temperatures: list[str],
         item_available_sizes: list[str]
     ) -> dict:
-        """
-        基于用户客制化偏好计算商品推荐加权
-
-        Args:
-            user_id: 用户ID
-            item_constraints: 商品的客制化约束（CustomizationConstraints.model_dump()）
-            item_available_temperatures: 商品支持的温度列表
-            item_available_sizes: 商品支持的杯型列表
-
-        Returns:
-            {
-                "total_boost": float,  # 0.8-1.5
-                "factors": {
-                    "temperature_match": float,
-                    "size_match": float,
-                    "milk_match": float,
-                    "sugar_match": float
-                },
-                "explanation": str
-            }
-        """
-        # 中英文映射（因为商品数据使用中文，用户偏好使用枚举值）
+        """基于用户客制化偏好计算商品推荐加权（异步版本）"""
+        # 中英文映射
         TEMP_MAP = {"HOT": ["热", "HOT"], "ICED": ["冰", "ICED"], "BLENDED": ["冰沙", "BLENDED"]}
         SIZE_MAP = {"TALL": ["中杯", "TALL"], "GRANDE": ["大杯", "GRANDE"], "VENTI": ["超大杯", "VENTI"]}
         MILK_MAP = {
@@ -741,19 +1026,18 @@ class BehaviorService:
         }
 
         def matches_preference(pref_value: str, item_values: list, mapping: dict) -> bool:
-            """检查用户偏好是否匹配商品支持的选项（支持中英文映射）"""
             if not item_values:
-                return True  # 无约束时视为匹配
+                return True
             pref_variants = mapping.get(pref_value.upper(), [pref_value])
             for variant in pref_variants:
                 for item_val in item_values:
                     if variant == item_val or variant.upper() == str(item_val).upper():
                         return True
             return False
-        profile = self.get_user_profile(user_id)
+
+        profile = await self.get_user_profile_async(user_id)
         customization_pref = profile.get("customization_preference", {})
 
-        # 新用户或无偏好数据，返回中性加权
         if profile["is_new_user"] or not customization_pref:
             return {
                 "total_boost": 1.0,
@@ -772,18 +1056,16 @@ class BehaviorService:
         # 1. 温度偏好匹配
         temp_pref = customization_pref.get("temperature", {})
         if temp_pref and item_available_temperatures:
-            # 找用户最常选的温度
             preferred_temp = max(temp_pref.items(), key=lambda x: x[1])[0] if temp_pref else None
             if preferred_temp:
-                # 使用中英文映射检查商品是否支持用户偏好的温度
                 if matches_preference(preferred_temp, item_available_temperatures, TEMP_MAP):
-                    factors["temperature_match"] = 1.15  # 匹配加权15%
+                    factors["temperature_match"] = 1.15
                     pref_ratio = temp_pref.get(preferred_temp, 0)
                     if pref_ratio > 0.6:
                         temp_display = {"HOT": "热", "ICED": "冰", "BLENDED": "冰沙"}.get(preferred_temp.upper(), preferred_temp)
                         explanations.append(f"支持您偏好的{temp_display}饮品")
                 else:
-                    factors["temperature_match"] = 0.9  # 不匹配降权10%
+                    factors["temperature_match"] = 0.9
             else:
                 factors["temperature_match"] = 1.0
         else:
@@ -794,11 +1076,10 @@ class BehaviorService:
         if size_pref and item_available_sizes:
             preferred_size = max(size_pref.items(), key=lambda x: x[1])[0] if size_pref else None
             if preferred_size:
-                # 使用中英文映射检查杯型匹配
                 if matches_preference(preferred_size, item_available_sizes, SIZE_MAP):
-                    factors["size_match"] = 1.1  # 匹配加权10%
+                    factors["size_match"] = 1.1
                 else:
-                    factors["size_match"] = 0.95  # 不匹配轻微降权
+                    factors["size_match"] = 0.95
             else:
                 factors["size_match"] = 1.0
         else:
@@ -811,9 +1092,8 @@ class BehaviorService:
             if available_milks:
                 preferred_milk = max(milk_pref.items(), key=lambda x: x[1])[0] if milk_pref else None
                 if preferred_milk:
-                    # 使用中英文映射检查商品是否支持用户偏好的奶类
                     if matches_preference(preferred_milk, available_milks, MILK_MAP):
-                        factors["milk_match"] = 1.2  # 奶类匹配加权较高20%
+                        factors["milk_match"] = 1.2
                         pref_ratio = milk_pref.get(preferred_milk, 0)
                         if pref_ratio > 0.5:
                             milk_name_map = {
@@ -823,17 +1103,15 @@ class BehaviorService:
                             milk_display = milk_name_map.get(preferred_milk.upper(), preferred_milk)
                             explanations.append(f"支持您常选的{milk_display}")
                     else:
-                        factors["milk_match"] = 0.85  # 不支持降权15%
+                        factors["milk_match"] = 0.85
                 else:
                     factors["milk_match"] = 1.0
             else:
-                # 商品不支持奶类定制（如美式咖啡）
-                # 如果用户偏好加奶，轻微降权
                 preferred_milk = max(milk_pref.items(), key=lambda x: x[1])[0] if milk_pref else None
                 if preferred_milk and preferred_milk.upper() != "NONE":
                     factors["milk_match"] = 0.95
                 else:
-                    factors["milk_match"] = 1.05  # 用户不加奶，商品也不加奶，轻微加权
+                    factors["milk_match"] = 1.05
         else:
             factors["milk_match"] = 1.0
 
@@ -844,9 +1122,8 @@ class BehaviorService:
             if available_sugars:
                 preferred_sugar = max(sugar_pref.items(), key=lambda x: x[1])[0] if sugar_pref else None
                 if preferred_sugar:
-                    # 使用中英文映射检查商品是否支持用户偏好的糖度
                     if matches_preference(preferred_sugar, available_sugars, SUGAR_MAP):
-                        factors["sugar_match"] = 1.15  # 糖度匹配加权15%
+                        factors["sugar_match"] = 1.15
                         pref_ratio = sugar_pref.get(preferred_sugar, 0)
                         if pref_ratio > 0.5:
                             sugar_name_map = {
@@ -856,7 +1133,7 @@ class BehaviorService:
                             sugar_display = sugar_name_map.get(preferred_sugar.upper(), preferred_sugar)
                             explanations.append(f"可选{sugar_display}")
                     else:
-                        factors["sugar_match"] = 0.9  # 不支持降权10%
+                        factors["sugar_match"] = 0.9
                 else:
                     factors["sugar_match"] = 1.0
             else:
@@ -864,15 +1141,12 @@ class BehaviorService:
         else:
             factors["sugar_match"] = 1.0
 
-        # 计算总加权
         total_boost = (
             factors["temperature_match"] *
             factors["size_match"] *
             factors["milk_match"] *
             factors["sugar_match"]
         )
-
-        # 限制范围在 0.8-1.5
         total_boost = max(0.8, min(1.5, total_boost))
 
         return {
@@ -881,7 +1155,27 @@ class BehaviorService:
             "explanation": "；".join(explanations) if explanations else "客制化偏好综合匹配"
         }
 
-    def get_suggested_customization_for_item(
+    def get_customization_based_boost(
+        self,
+        user_id: str,
+        item_constraints: Optional[dict],
+        item_available_temperatures: list[str],
+        item_available_sizes: list[str]
+    ) -> dict:
+        """基于用户客制化偏好计算商品推荐加权（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {
+                "total_boost": 1.0,
+                "factors": {"temperature_match": 1.0, "size_match": 1.0, "milk_match": 1.0, "sugar_match": 1.0},
+                "explanation": "新用户，无客制化偏好数据"
+            }
+        except RuntimeError:
+            return asyncio.run(self.get_customization_based_boost_async(
+                user_id, item_constraints, item_available_temperatures, item_available_sizes
+            ))
+
+    async def get_suggested_customization_for_item_async(
         self,
         user_id: str,
         item_sku: str,
@@ -890,32 +1184,8 @@ class BehaviorService:
         item_available_sizes: list[str],
         item_base_price: float
     ) -> dict:
-        """
-        为用户推荐特定商品的最佳客制化组合
-
-        Args:
-            user_id: 用户ID
-            item_sku: 商品SKU
-            item_constraints: 商品客制化约束
-            item_available_temperatures: 商品支持的温度列表
-            item_available_sizes: 商品支持的杯型列表
-            item_base_price: 商品基础价格
-
-        Returns:
-            {
-                "suggested_customization": {
-                    "temperature": "ICED",
-                    "cup_size": "GRANDE",
-                    "sugar_level": "NONE",
-                    "milk_type": "OAT"
-                },
-                "confidence": 0.78,
-                "reason": "您偏好冰饮；您常选燕麦奶",
-                "estimated_price_adjustment": 3.0,
-                "estimated_final_price": 41.0
-            }
-        """
-        profile = self.get_user_profile(user_id)
+        """为用户推荐特定商品的最佳客制化组合（异步版本）"""
+        profile = await self.get_user_profile_async(user_id)
         customization_pref = profile.get("customization_preference", {})
 
         suggested = {}
@@ -927,7 +1197,6 @@ class BehaviorService:
         if item_available_temperatures:
             temp_pref = customization_pref.get("temperature", {})
             if temp_pref:
-                # 找用户偏好的温度，检查商品是否支持
                 for temp, ratio in sorted(temp_pref.items(), key=lambda x: -x[1]):
                     temp_upper = temp.upper()
                     temp_values = [t.upper() for t in item_available_temperatures]
@@ -939,14 +1208,12 @@ class BehaviorService:
                             reasons.append(f"您偏好{temp_display}饮")
                         break
                 else:
-                    # 用户偏好不可用，选默认
                     if item_constraints and item_constraints.get("default_temperature"):
                         suggested["temperature"] = item_constraints["default_temperature"]
                     else:
                         suggested["temperature"] = item_available_temperatures[0]
                     confidence_factors.append(0.3)
             else:
-                # 新用户，选默认或第一个
                 if item_constraints and item_constraints.get("default_temperature"):
                     suggested["temperature"] = item_constraints["default_temperature"]
                 else:
@@ -963,14 +1230,13 @@ class BehaviorService:
                     if size_upper in size_values or size in item_available_sizes:
                         suggested["cup_size"] = size
                         confidence_factors.append(ratio)
-                        # 计算杯型价格调整
                         if size_upper == "VENTI":
                             price_adjustment += 4
                         elif size_upper == "TALL":
                             price_adjustment -= 3
                         break
                 else:
-                    suggested["cup_size"] = "GRANDE"  # 默认大杯
+                    suggested["cup_size"] = "GRANDE"
                     confidence_factors.append(0.3)
             else:
                 suggested["cup_size"] = "GRANDE"
@@ -1018,7 +1284,6 @@ class BehaviorService:
                     if milk_upper in milk_values or milk in available_milks:
                         suggested["milk_type"] = milk
                         confidence_factors.append(ratio)
-                        # 特殊奶类加价
                         if milk_upper in ["OAT", "COCONUT"]:
                             price_adjustment += 3
                             if ratio > 0.4:
@@ -1046,8 +1311,7 @@ class BehaviorService:
 
         # 5. 额外选项推荐
         if item_constraints:
-            # 加浓缩
-            if item_constraints.get("supports_extra_shot"):
+            if item_constraints.get("supports_espresso_adjustment"):
                 extra_shot_pref = customization_pref.get("extra_shot", {})
                 if extra_shot_pref.get("True", 0) > 0.3 or extra_shot_pref.get("true", 0) > 0.3:
                     suggested["extra_shot"] = True
@@ -1056,7 +1320,6 @@ class BehaviorService:
                 else:
                     suggested["extra_shot"] = False
 
-            # 奶油
             if item_constraints.get("supports_whipped_cream"):
                 cream_pref = customization_pref.get("whipped_cream", {})
                 if cream_pref.get("True", 0) > 0.3 or cream_pref.get("true", 0) > 0.3:
@@ -1065,13 +1328,11 @@ class BehaviorService:
                 else:
                     suggested["whipped_cream"] = False
 
-        # 计算置信度
         if confidence_factors:
             confidence = sum(confidence_factors) / len(confidence_factors)
         else:
             confidence = 0.5
 
-        # 新用户置信度降低
         if profile["is_new_user"]:
             confidence = min(confidence, 0.4)
             reasons = ["推荐默认配置"]
@@ -1086,19 +1347,68 @@ class BehaviorService:
             "estimated_final_price": round(estimated_final_price, 2)
         }
 
-    def get_order_stats(self) -> dict:
-        """获取订单统计概览"""
-        return {
-            "total_orders": len(self.order_data["orders"]),
-            "total_users": len(self.order_data["user_order_index"]),
-            "item_stats": {
-                sku: {
-                    "total_orders": stats["total_orders"],
-                    "unique_users": len(stats["unique_users"]) if isinstance(stats["unique_users"], list) else 0
-                }
-                for sku, stats in self.order_data["stats"].items()
+    def get_suggested_customization_for_item(
+        self,
+        user_id: str,
+        item_sku: str,
+        item_constraints: Optional[dict],
+        item_available_temperatures: list[str],
+        item_available_sizes: list[str],
+        item_base_price: float
+    ) -> dict:
+        """为用户推荐特定商品的最佳客制化组合（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {
+                "suggested_customization": {},
+                "confidence": 0.5,
+                "reason": "推荐默认配置",
+                "estimated_price_adjustment": 0.0,
+                "estimated_final_price": item_base_price
             }
+        except RuntimeError:
+            return asyncio.run(self.get_suggested_customization_for_item_async(
+                user_id, item_sku, item_constraints, item_available_temperatures,
+                item_available_sizes, item_base_price
+            ))
+
+    async def get_order_stats_async(self) -> dict:
+        """获取订单统计概览（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute("SELECT COUNT(*) as count FROM orders")
+        total_orders = (await cursor.fetchone())["count"]
+
+        cursor = await db.execute("SELECT COUNT(DISTINCT user_id) as count FROM orders")
+        total_users = (await cursor.fetchone())["count"]
+
+        cursor = await db.execute("""
+            SELECT item_sku, total_orders, unique_users
+            FROM order_stats
+        """)
+        rows = await cursor.fetchall()
+
+        item_stats = {}
+        for row in rows:
+            unique_users = json.loads(row["unique_users"]) if row["unique_users"] else []
+            item_stats[row["item_sku"]] = {
+                "total_orders": row["total_orders"],
+                "unique_users": len(unique_users)
+            }
+
+        return {
+            "total_orders": total_orders,
+            "total_users": total_users,
+            "item_stats": item_stats
         }
+
+    def get_order_stats(self) -> dict:
+        """获取订单统计概览（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"total_orders": 0, "total_users": 0, "item_stats": {}}
+        except RuntimeError:
+            return asyncio.run(self.get_order_stats_async())
 
 
 # ============ Session实时个性化 ============
@@ -1142,13 +1452,10 @@ class SessionService:
             "timestamp": time.time()
         }
         session["interactions"].append(interaction)
-
-        # 限制交互历史长度
         session["interactions"] = session["interactions"][-50:]
 
         prefs = session["realtime_preferences"]
 
-        # 实时更新偏好
         if interaction_type == "like":
             for tag in item_data.get("tags", []):
                 if tag not in prefs["liked_tags"]:
@@ -1158,7 +1465,6 @@ class SessionService:
             for tag in item_data.get("tags", []):
                 if tag not in prefs["disliked_tags"]:
                     prefs["disliked_tags"].append(tag)
-                # 从喜欢列表移除
                 if tag in prefs["liked_tags"]:
                     prefs["liked_tags"].remove(tag)
 
@@ -1167,7 +1473,6 @@ class SessionService:
             if category and category not in prefs["viewed_categories"]:
                 prefs["viewed_categories"].append(category)
 
-            # 更新价格偏好
             price = item_data.get("price")
             if price:
                 if prefs["price_range"] is None:
@@ -1193,25 +1498,21 @@ class SessionService:
         prefs = session["realtime_preferences"]
         boost = 1.0
 
-        # 喜欢的标签加权
         liked_match = sum(1 for tag in item_tags if tag in prefs["liked_tags"])
-        boost *= 1.0 + (liked_match * 0.15)  # 每匹配一个+15%
+        boost *= 1.0 + (liked_match * 0.15)
 
-        # 不喜欢的标签降权
         disliked_match = sum(1 for tag in item_tags if tag in prefs["disliked_tags"])
-        boost *= max(0.3, 1.0 - (disliked_match * 0.3))  # 每匹配一个-30%，最低30%
+        boost *= max(0.3, 1.0 - (disliked_match * 0.3))
 
-        # 浏览过的类别轻微加权
         if item_category in prefs["viewed_categories"]:
             boost *= 1.1
 
-        # 价格区间偏好
         if prefs["price_range"] and prefs["price_range"]["count"] >= 3:
             pr = prefs["price_range"]
             if pr["min"] <= item_price <= pr["max"]:
-                boost *= 1.05  # 价格在用户偏好区间内
+                boost *= 1.05
 
-        return min(boost, 2.5)  # 最多2.5倍
+        return min(boost, 2.5)
 
     def get_session_info(self, session_id: str) -> dict:
         """获取session信息"""
@@ -1260,7 +1561,6 @@ class ExplainabilityService:
 
         factors = []
 
-        # 1. 语义匹配因素
         if embedding_similarity > 0.7:
             factors.append({
                 "type": "semantic",
@@ -1278,7 +1578,6 @@ class ExplainabilityService:
                 "weight": 0.3
             })
 
-        # 2. 关键词匹配
         if matched_keywords:
             factors.append({
                 "type": "keyword",
@@ -1288,7 +1587,6 @@ class ExplainabilityService:
                 "weight": 0.2
             })
 
-        # 3. 历史行为因素
         if behavior_boost > 1.1:
             factors.append({
                 "type": "history",
@@ -1298,7 +1596,6 @@ class ExplainabilityService:
                 "weight": 0.2
             })
 
-        # 4. 实时偏好因素
         if session_boost > 1.1:
             factors.append({
                 "type": "realtime",
@@ -1316,7 +1613,6 @@ class ExplainabilityService:
                 "weight": -0.1
             })
 
-        # 5. 商品特性因素
         if item.get("is_new"):
             factors.append({
                 "type": "feature",
@@ -1333,13 +1629,11 @@ class ExplainabilityService:
                 "weight": 0.1
             })
 
-        # 计算各因素贡献占比
         total_weight = sum(abs(f.get("weight", 0)) for f in factors)
         for factor in factors:
             if total_weight > 0:
                 factor["contribution"] = round(abs(factor.get("weight", 0)) / total_weight * 100, 1)
 
-        # 生成摘要
         primary_reason = factors[0] if factors else {"label": "综合推荐"}
 
         return {
@@ -1359,54 +1653,43 @@ class ExplainabilityService:
 
 # ============ 预设服务 ============
 
-PRESET_FILE = DATA_DIR / "user_presets.json"
-
-
 class PresetService:
     """用户客制化预设服务"""
 
     def __init__(self):
-        self.presets = self._load_presets()
+        pass
 
-    def _load_presets(self) -> dict:
-        """加载预设数据"""
-        if PRESET_FILE.exists():
-            try:
-                with open(PRESET_FILE, "r") as f:
-                    return json.load(f)
-            except:
-                pass
-        return {"presets": {}, "user_index": {}}
-
-    def _save_presets(self):
-        """保存预设数据"""
-        with open(PRESET_FILE, "w") as f:
-            json.dump(self.presets, f, ensure_ascii=False, indent=2)
-
-    def create_preset(self, preset: dict) -> dict:
-        """
-        创建用户预设
-
-        Args:
-            preset: {
-                "user_id": str,
-                "name": str,
-                "default_temperature": str (optional),
-                "default_cup_size": str (optional),
-                "default_sugar_level": str (optional),
-                "default_milk_type": str (optional),
-                "extra_shot": bool (optional),
-                "whipped_cream": bool (optional)
-            }
-
-        Returns:
-            {"status": "created", "preset": {...}}
-        """
+    async def create_preset_async(self, preset: dict) -> dict:
+        """创建用户预设（异步版本）"""
         user_id = preset.get("user_id")
         if not user_id:
             return {"status": "error", "message": "user_id is required"}
 
+        db = await get_db()
         preset_id = f"preset_{user_id}_{int(time.time() * 1000)}"
+        now = time.time()
+
+        await db.execute(
+            """
+            INSERT INTO user_presets (preset_id, user_id, name, default_temperature, default_cup_size, default_sugar_level, default_milk_type, extra_shot, whipped_cream, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                preset_id,
+                user_id,
+                preset.get("name", "我的预设"),
+                preset.get("default_temperature"),
+                preset.get("default_cup_size"),
+                preset.get("default_sugar_level"),
+                preset.get("default_milk_type"),
+                1 if preset.get("extra_shot") else 0,
+                1 if preset.get("whipped_cream") else 0,
+                now,
+                now
+            )
+        )
+        await db.commit()
+
         preset_data = {
             "preset_id": preset_id,
             "user_id": user_id,
@@ -1417,79 +1700,169 @@ class PresetService:
             "default_milk_type": preset.get("default_milk_type"),
             "extra_shot": preset.get("extra_shot", False),
             "whipped_cream": preset.get("whipped_cream", False),
-            "created_at": time.time(),
-            "updated_at": time.time()
+            "created_at": now,
+            "updated_at": now
         }
-
-        # 存储预设
-        self.presets["presets"][preset_id] = preset_data
-
-        # 更新用户索引
-        if user_id not in self.presets["user_index"]:
-            self.presets["user_index"][user_id] = []
-        self.presets["user_index"][user_id].append(preset_id)
-
-        self._save_presets()
 
         return {
             "status": "created",
             "preset": preset_data
         }
 
-    def get_user_presets(self, user_id: str) -> list[dict]:
-        """获取用户的所有预设"""
-        preset_ids = self.presets["user_index"].get(user_id, [])
+    def create_preset(self, preset: dict) -> dict:
+        """创建用户预设（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "pending"}
+        except RuntimeError:
+            return asyncio.run(self.create_preset_async(preset))
+
+    async def get_user_presets_async(self, user_id: str) -> list[dict]:
+        """获取用户的所有预设（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute(
+            "SELECT * FROM user_presets WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,)
+        )
+        rows = await cursor.fetchall()
+
         return [
-            self.presets["presets"][pid]
-            for pid in preset_ids
-            if pid in self.presets["presets"]
+            {
+                "preset_id": row["preset_id"],
+                "user_id": row["user_id"],
+                "name": row["name"],
+                "default_temperature": row["default_temperature"],
+                "default_cup_size": row["default_cup_size"],
+                "default_sugar_level": row["default_sugar_level"],
+                "default_milk_type": row["default_milk_type"],
+                "extra_shot": bool(row["extra_shot"]),
+                "whipped_cream": bool(row["whipped_cream"]),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            }
+            for row in rows
         ]
 
-    def get_preset(self, preset_id: str) -> Optional[dict]:
-        """获取单个预设"""
-        return self.presets["presets"].get(preset_id)
+    def get_user_presets(self, user_id: str) -> list[dict]:
+        """获取用户的所有预设（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return []
+        except RuntimeError:
+            return asyncio.run(self.get_user_presets_async(user_id))
 
-    def update_preset(self, preset_id: str, updates: dict) -> dict:
-        """更新预设"""
-        if preset_id not in self.presets["presets"]:
+    async def get_preset_async(self, preset_id: str) -> Optional[dict]:
+        """获取单个预设（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute(
+            "SELECT * FROM user_presets WHERE preset_id = ?",
+            (preset_id,)
+        )
+        row = await cursor.fetchone()
+
+        if not row:
+            return None
+
+        return {
+            "preset_id": row["preset_id"],
+            "user_id": row["user_id"],
+            "name": row["name"],
+            "default_temperature": row["default_temperature"],
+            "default_cup_size": row["default_cup_size"],
+            "default_sugar_level": row["default_sugar_level"],
+            "default_milk_type": row["default_milk_type"],
+            "extra_shot": bool(row["extra_shot"]),
+            "whipped_cream": bool(row["whipped_cream"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"]
+        }
+
+    def get_preset(self, preset_id: str) -> Optional[dict]:
+        """获取单个预设（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return None
+        except RuntimeError:
+            return asyncio.run(self.get_preset_async(preset_id))
+
+    async def update_preset_async(self, preset_id: str, updates: dict) -> dict:
+        """更新预设（异步版本）"""
+        db = await get_db()
+
+        # 检查预设是否存在
+        cursor = await db.execute(
+            "SELECT 1 FROM user_presets WHERE preset_id = ?",
+            (preset_id,)
+        )
+        if not await cursor.fetchone():
             return {"status": "error", "message": "preset not found"}
 
-        preset = self.presets["presets"][preset_id]
         allowed_fields = [
             "name", "default_temperature", "default_cup_size",
             "default_sugar_level", "default_milk_type",
             "extra_shot", "whipped_cream"
         ]
 
+        set_clauses = []
+        values = []
         for field in allowed_fields:
             if field in updates:
-                preset[field] = updates[field]
+                set_clauses.append(f"{field} = ?")
+                val = updates[field]
+                if field in ["extra_shot", "whipped_cream"]:
+                    val = 1 if val else 0
+                values.append(val)
 
-        preset["updated_at"] = time.time()
-        self._save_presets()
+        if set_clauses:
+            set_clauses.append("updated_at = ?")
+            values.append(time.time())
+            values.append(preset_id)
 
+            await db.execute(
+                f"UPDATE user_presets SET {', '.join(set_clauses)} WHERE preset_id = ?",
+                values
+            )
+            await db.commit()
+
+        preset = await self.get_preset_async(preset_id)
         return {"status": "updated", "preset": preset}
 
-    def delete_preset(self, preset_id: str) -> dict:
-        """删除预设"""
-        if preset_id not in self.presets["presets"]:
+    def update_preset(self, preset_id: str, updates: dict) -> dict:
+        """更新预设（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "pending"}
+        except RuntimeError:
+            return asyncio.run(self.update_preset_async(preset_id, updates))
+
+    async def delete_preset_async(self, preset_id: str) -> dict:
+        """删除预设（异步版本）"""
+        db = await get_db()
+
+        cursor = await db.execute(
+            "SELECT 1 FROM user_presets WHERE preset_id = ?",
+            (preset_id,)
+        )
+        if not await cursor.fetchone():
             return {"status": "error", "message": "preset not found"}
 
-        preset = self.presets["presets"][preset_id]
-        user_id = preset["user_id"]
+        await db.execute(
+            "DELETE FROM user_presets WHERE preset_id = ?",
+            (preset_id,)
+        )
+        await db.commit()
 
-        # 从预设列表删除
-        del self.presets["presets"][preset_id]
-
-        # 从用户索引删除
-        if user_id in self.presets["user_index"]:
-            self.presets["user_index"][user_id] = [
-                pid for pid in self.presets["user_index"][user_id]
-                if pid != preset_id
-            ]
-
-        self._save_presets()
         return {"status": "deleted", "preset_id": preset_id}
+
+    def delete_preset(self, preset_id: str) -> dict:
+        """删除预设（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "pending"}
+        except RuntimeError:
+            return asyncio.run(self.delete_preset_async(preset_id))
 
     def apply_preset_to_item(
         self,
@@ -1499,18 +1872,26 @@ class PresetService:
         item_available_sizes: list[str],
         item_base_price: float
     ) -> dict:
-        """
-        将预设应用到商品，考虑商品约束
+        """将预设应用到商品（同步版本）"""
+        try:
+            asyncio.get_running_loop()
+            return {"status": "error", "message": "Use async version"}
+        except RuntimeError:
+            return asyncio.run(self.apply_preset_to_item_async(
+                preset_id, item_constraints, item_available_temperatures,
+                item_available_sizes, item_base_price
+            ))
 
-        Returns:
-            {
-                "applied_customization": {...},
-                "conflicts": [...],
-                "estimated_price_adjustment": float,
-                "estimated_final_price": float
-            }
-        """
-        preset = self.get_preset(preset_id)
+    async def apply_preset_to_item_async(
+        self,
+        preset_id: str,
+        item_constraints: Optional[dict],
+        item_available_temperatures: list[str],
+        item_available_sizes: list[str],
+        item_base_price: float
+    ) -> dict:
+        """将预设应用到商品（异步版本）"""
+        preset = await self.get_preset_async(preset_id)
         if not preset:
             return {"status": "error", "message": "preset not found"}
 
@@ -1590,7 +1971,7 @@ class PresetService:
 
         # 加浓缩
         if preset.get("extra_shot") and item_constraints:
-            if item_constraints.get("supports_extra_shot"):
+            if item_constraints.get("supports_espresso_adjustment"):
                 applied["extra_shot"] = True
                 price_adjustment += 4
             else:

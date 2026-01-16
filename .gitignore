@@ -18,3 +18,4 @@ wheels/
 # Runtime data
 app/data/
 app/cache/
+.env

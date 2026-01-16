@@ -1,6 +1,7 @@
 """FastAPI 主应用"""
 from typing import Optional
 from datetime import datetime
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -14,6 +15,27 @@ from app.models import (
 from app.data import MENU_ITEMS, get_menu_by_sku, get_menu_by_category, get_all_categories
 from app.recommendation import recommendation_engine
 from app.embedding_service import embedding_recommendation_engine
+from app.db import init_db, close_db, migrate_from_json
+
+
+# ============ 应用生命周期 ============
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    # 启动时初始化数据库
+    print("[Startup] 初始化数据库...")
+    await init_db()
+    print("[Startup] 执行 JSON 到 SQLite 迁移...")
+    await migrate_from_json()
+    print("[Startup] 数据库初始化完成")
+
+    yield
+
+    # 关闭时清理资源
+    print("[Shutdown] 关闭数据库连接...")
+    await close_db()
+    print("[Shutdown] 清理完成")
 
 
 # ============ 上下文自动获取 ============
@@ -121,7 +143,8 @@ class SessionInteractionRequest(BaseModel):
 app = FastAPI(
     title="星巴克猜你喜欢 Demo",
     description="类似星巴克的个性化菜单推荐系统",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # 静态文件和模板
@@ -376,14 +399,15 @@ async def get_current_context():
 async def get_experiments():
     """获取所有A/B实验"""
     from app.experiment_service import ab_test_service
-    return {"experiments": ab_test_service.get_all_experiments()}
+    experiments = await ab_test_service.get_all_experiments_async()
+    return {"experiments": experiments}
 
 
 @app.get("/api/experiments/{experiment_id}/variant")
 async def get_user_variant(experiment_id: str, user_id: str):
     """获取用户在指定实验中的分组"""
     from app.experiment_service import ab_test_service
-    variant = ab_test_service.get_variant(experiment_id, user_id)
+    variant = await ab_test_service.get_variant_async(experiment_id, user_id)
     return variant
 
 
@@ -391,7 +415,7 @@ async def get_user_variant(experiment_id: str, user_id: str):
 async def get_experiment_stats(experiment_id: str):
     """获取实验统计数据"""
     from app.experiment_service import feedback_service
-    stats = feedback_service.get_experiment_stats(experiment_id)
+    stats = await feedback_service.get_experiment_stats_async(experiment_id)
     return {"experiment_id": experiment_id, "variant_stats": stats}
 
 
@@ -412,7 +436,7 @@ async def record_feedback(request: FeedbackRequest):
         context=request.context
     )
 
-    result = feedback_service.record_feedback(feedback)
+    result = await feedback_service.record_feedback_async(feedback)
     return result
 
 
@@ -420,7 +444,7 @@ async def record_feedback(request: FeedbackRequest):
 async def get_item_feedback_stats(item_sku: str):
     """获取商品反馈统计"""
     from app.experiment_service import feedback_service
-    stats = feedback_service.get_item_stats(item_sku)
+    stats = await feedback_service.get_item_stats_async(item_sku)
     return {"item_sku": item_sku, "stats": stats}
 
 
@@ -439,7 +463,7 @@ async def record_behavior(request: BehaviorRequest):
         details=request.details
     )
 
-    result = behavior_service.record_behavior(behavior)
+    result = await behavior_service.record_behavior_async(behavior)
     return result
 
 
@@ -447,7 +471,7 @@ async def record_behavior(request: BehaviorRequest):
 async def get_user_behavior_profile(user_id: str):
     """获取用户行为画像"""
     from app.experiment_service import behavior_service
-    profile = behavior_service.get_user_profile(user_id)
+    profile = await behavior_service.get_user_profile_async(user_id)
     return profile
 
 
@@ -533,7 +557,7 @@ async def record_order(request: OrderRecordRequest):
         timestamp=request.timestamp
     )
 
-    result = behavior_service.record_order(order)
+    result = await behavior_service.record_order_async(order)
     return result
 
 
@@ -563,7 +587,7 @@ async def batch_record_orders(request: BatchOrderRequest):
             timestamp=o.timestamp
         ))
 
-    result = behavior_service.batch_record_orders(orders)
+    result = await behavior_service.batch_record_orders_async(orders)
     return result
 
 
@@ -572,8 +596,8 @@ async def get_user_orders(user_id: str, limit: int = 50):
     """获取用户订单历史"""
     from app.experiment_service import behavior_service
 
-    orders = behavior_service.get_user_orders(user_id, limit)
-    profile = behavior_service.get_user_profile(user_id)
+    orders = await behavior_service.get_user_orders_async(user_id, limit)
+    profile = await behavior_service.get_user_profile_async(user_id)
 
     return {
         "user_id": user_id,
@@ -648,7 +672,7 @@ async def simulate_orders(request: SimulateOrdersRequest):
             orders.append(order)
 
     # 批量记录
-    result = behavior_service.batch_record_orders(orders)
+    result = await behavior_service.batch_record_orders_async(orders)
 
     return {
         "status": "simulated",
@@ -668,7 +692,7 @@ async def get_order_stats():
     """获取订单统计概览"""
     from app.experiment_service import behavior_service
 
-    return behavior_service.get_order_stats()
+    return await behavior_service.get_order_stats_async()
 
 
 @app.get("/api/orders/boost/{user_id}/{item_sku}")
@@ -681,7 +705,7 @@ async def get_order_boost(user_id: str, item_sku: str):
     if not item:
         return {"error": "商品不存在"}
 
-    boost_detail = behavior_service.get_order_based_recommendation_boost(
+    boost_detail = await behavior_service.get_order_based_recommendation_boost_async(
         user_id=user_id,
         item_sku=item_sku,
         item_category=item.category.value,
@@ -738,7 +762,7 @@ async def create_preset(request: PresetCreateRequest):
         "whipped_cream": request.whipped_cream
     }
 
-    result = preset_service.create_preset(preset_data)
+    result = await preset_service.create_preset_async(preset_data)
     return result
 
 
@@ -747,7 +771,7 @@ async def get_user_presets(user_id: str):
     """获取用户的所有预设"""
     from app.experiment_service import preset_service
 
-    presets = preset_service.get_user_presets(user_id)
+    presets = await preset_service.get_user_presets_async(user_id)
     return {
         "user_id": user_id,
         "preset_count": len(presets),
@@ -760,7 +784,7 @@ async def get_preset(preset_id: str):
     """获取单个预设详情"""
     from app.experiment_service import preset_service
 
-    preset = preset_service.get_preset(preset_id)
+    preset = await preset_service.get_preset_async(preset_id)
     if not preset:
         return {"status": "error", "message": "preset not found"}
     return {"preset": preset}
@@ -772,7 +796,7 @@ async def update_preset(preset_id: str, request: PresetUpdateRequest):
     from app.experiment_service import preset_service
 
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
-    result = preset_service.update_preset(preset_id, updates)
+    result = await preset_service.update_preset_async(preset_id, updates)
     return result
 
 
@@ -781,7 +805,7 @@ async def delete_preset(preset_id: str):
     """删除预设"""
     from app.experiment_service import preset_service
 
-    result = preset_service.delete_preset(preset_id)
+    result = await preset_service.delete_preset_async(preset_id)
     return result
 
 
@@ -800,7 +824,7 @@ async def apply_preset_to_item(preset_id: str, item_sku: str):
     if item.customization_constraints:
         item_constraints = item.customization_constraints.model_dump()
 
-    result = preset_service.apply_preset_to_item(
+    result = await preset_service.apply_preset_to_item_async(
         preset_id,
         item_constraints,
         [t.value for t in item.available_temperatures],
@@ -839,7 +863,7 @@ async def get_cart(session_id: str):
     """获取购物车"""
     from app.cart_service import cart_service
 
-    cart = cart_service.get_cart(session_id)
+    cart = await cart_service.get_cart_async(session_id)
     return cart.model_dump()
 
 
@@ -862,7 +886,7 @@ async def add_to_cart(request: dict):
         customization=customization
     )
 
-    result = cart_service.add_to_cart(add_request)
+    result = await cart_service.add_to_cart_async(add_request)
     return result
 
 
@@ -881,7 +905,7 @@ async def update_cart_item(session_id: str, item_id: str, request: dict):
         customization=customization
     )
 
-    result = cart_service.update_cart_item(session_id, item_id, update_request)
+    result = await cart_service.update_cart_item_async(session_id, item_id, update_request)
     return result
 
 
@@ -890,7 +914,7 @@ async def remove_cart_item(session_id: str, item_id: str):
     """删除购物车商品"""
     from app.cart_service import cart_service
 
-    result = cart_service.remove_cart_item(session_id, item_id)
+    result = await cart_service.remove_cart_item_async(session_id, item_id)
     return result
 
 
@@ -899,7 +923,7 @@ async def clear_cart(session_id: str):
     """清空购物车"""
     from app.cart_service import cart_service
 
-    result = cart_service.clear_cart(session_id)
+    result = await cart_service.clear_cart_async(session_id)
     return result
 
 
@@ -914,7 +938,7 @@ async def checkout_cart(request: dict):
         user_id=request.get("user_id")
     )
 
-    result = cart_service.checkout(checkout_request)
+    result = await cart_service.checkout_async(checkout_request)
     return result
 
 
@@ -923,7 +947,7 @@ async def get_cart_orders(user_id: str, limit: int = 20):
     """获取用户订单历史"""
     from app.cart_service import cart_service
 
-    orders = cart_service.get_user_orders(user_id, limit)
+    orders = await cart_service.get_user_orders_async(user_id, limit)
     return {
         "user_id": user_id,
         "order_count": len(orders),
@@ -936,7 +960,7 @@ async def get_order_detail(order_id: str):
     """获取订单详情"""
     from app.cart_service import cart_service
 
-    order = cart_service.get_order(order_id)
+    order = await cart_service.get_order_async(order_id)
     if not order:
         return {"status": "error", "message": "订单不存在"}
     return {"status": "success", "order": order}
@@ -947,4 +971,14 @@ async def get_cart_stats():
     """获取订单统计"""
     from app.cart_service import cart_service
 
-    return cart_service.get_order_stats()
+    return await cart_service.get_order_stats_async()
+
+
+# ============ 管理API ============
+
+@app.post("/api/admin/migrate")
+async def migrate_json_to_sqlite():
+    """手动执行 JSON 到 SQLite 迁移"""
+    from app.db import migrate_from_json
+    result = await migrate_from_json()
+    return {"status": "migrated", "result": result}

@@ -395,7 +395,7 @@ class OpenAIEmbeddingVectorService:
                     if low_sugar_options:
                         customization_features.append(f"支持{'/'  .join(low_sugar_options[:2])}")
                 # 加浓缩
-                if constraints.supports_extra_shot:
+                if constraints.supports_espresso_adjustment:
                     customization_features.append("可加浓缩")
                 # 奶油顶
                 if constraints.supports_whipped_cream:
