@@ -1038,7 +1038,27 @@ class BehaviorService:
         profile = await self.get_user_profile_async(user_id)
         customization_pref = profile.get("customization_preference", {})
 
-        if profile["is_new_user"] or not customization_pref:
+        # 🆕 获取用户预设，如果有预设则使用预设作为基础偏好
+        user_presets = await preset_service.get_user_presets_async(user_id)
+        preset_prefs = {}
+        has_preset = len(user_presets) > 0
+
+        if has_preset:
+            preset = user_presets[0]
+            if preset.get("default_temperature"):
+                preset_prefs["temperature"] = {preset["default_temperature"]: 0.9}
+            if preset.get("default_cup_size"):
+                preset_prefs["cup_size"] = {preset["default_cup_size"]: 0.9}
+            if preset.get("default_sugar_level"):
+                preset_prefs["sugar_level"] = {preset["default_sugar_level"]: 0.9}
+            if preset.get("default_milk_type"):
+                preset_prefs["milk_type"] = {preset["default_milk_type"]: 0.9}
+
+        # 合并偏好
+        if not customization_pref and preset_prefs:
+            customization_pref = preset_prefs
+
+        if (profile["is_new_user"] and not has_preset) or not customization_pref:
             return {
                 "total_boost": 1.0,
                 "factors": {
@@ -1163,14 +1183,29 @@ class BehaviorService:
         item_available_sizes: list[str]
     ) -> dict:
         """基于用户客制化偏好计算商品推荐加权（同步版本）"""
+        import concurrent.futures
+
+        def run_async_in_thread():
+            """在新线程中运行异步代码"""
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(
+                    self.get_customization_based_boost_async(
+                        user_id, item_constraints, item_available_temperatures, item_available_sizes
+                    )
+                )
+            finally:
+                loop.close()
+
         try:
             asyncio.get_running_loop()
-            return {
-                "total_boost": 1.0,
-                "factors": {"temperature_match": 1.0, "size_match": 1.0, "milk_match": 1.0, "sugar_match": 1.0},
-                "explanation": "新用户，无客制化偏好数据"
-            }
+            # 有运行中的事件循环，使用线程池执行
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_async_in_thread)
+                return future.result(timeout=10)
         except RuntimeError:
+            # 没有运行中的事件循环，直接运行
             return asyncio.run(self.get_customization_based_boost_async(
                 user_id, item_constraints, item_available_temperatures, item_available_sizes
             ))
@@ -1188,10 +1223,43 @@ class BehaviorService:
         profile = await self.get_user_profile_async(user_id)
         customization_pref = profile.get("customization_preference", {})
 
+        # 🆕 获取用户预设，如果有预设则使用预设作为基础偏好
+        user_presets = await preset_service.get_user_presets_async(user_id)
+        preset_prefs = {}
+        has_preset = len(user_presets) > 0
+
+        if has_preset:
+            # 使用第一个预设作为默认偏好
+            preset = user_presets[0]
+            if preset.get("default_temperature"):
+                preset_prefs["temperature"] = {preset["default_temperature"]: 0.9}
+            if preset.get("default_cup_size"):
+                preset_prefs["cup_size"] = {preset["default_cup_size"]: 0.9}
+            if preset.get("default_sugar_level"):
+                preset_prefs["sugar_level"] = {preset["default_sugar_level"]: 0.9}
+            if preset.get("default_milk_type"):
+                preset_prefs["milk_type"] = {preset["default_milk_type"]: 0.9}
+            if preset.get("extra_shot"):
+                preset_prefs["extra_shot"] = {"True": 0.9}
+            if preset.get("whipped_cream"):
+                preset_prefs["whipped_cream"] = {"True": 0.9}
+
+        # 合并偏好：订单历史优先，预设作为补充
+        merged_pref = {}
+        for key in ["temperature", "cup_size", "sugar_level", "milk_type", "extra_shot", "whipped_cream"]:
+            if customization_pref.get(key):
+                merged_pref[key] = customization_pref[key]
+            elif preset_prefs.get(key):
+                merged_pref[key] = preset_prefs[key]
+
+        # 使用合并后的偏好
+        customization_pref = merged_pref if merged_pref else customization_pref
+
         suggested = {}
         reasons = []
         confidence_factors = []
         price_adjustment = 0.0
+        used_preset = has_preset and not profile.get("customization_preference")
 
         # 1. 温度推荐
         if item_available_temperatures:
@@ -1333,16 +1401,28 @@ class BehaviorService:
         else:
             confidence = 0.5
 
-        if profile["is_new_user"]:
+        # 🆕 如果有预设，即使是新用户也使用预设推荐
+        if profile["is_new_user"] and not has_preset:
             confidence = min(confidence, 0.4)
             reasons = ["推荐默认配置"]
+        elif used_preset and not reasons:
+            reasons = ["基于您的预设「" + user_presets[0].get("name", "我的预设") + "」推荐"]
+            confidence = max(confidence, 0.7)  # 预设推荐置信度较高
 
         estimated_final_price = item_base_price + price_adjustment
+
+        # 🆕 根据来源设置推荐理由
+        if reasons:
+            reason_text = "；".join(reasons[:3])
+        elif has_preset:
+            reason_text = "基于您的预设推荐"
+        else:
+            reason_text = "综合您的历史偏好推荐"
 
         return {
             "suggested_customization": suggested,
             "confidence": round(confidence, 2),
-            "reason": "；".join(reasons[:3]) if reasons else "综合您的历史偏好推荐",
+            "reason": reason_text,
             "estimated_price_adjustment": round(price_adjustment, 2),
             "estimated_final_price": round(estimated_final_price, 2)
         }
@@ -1357,16 +1437,30 @@ class BehaviorService:
         item_base_price: float
     ) -> dict:
         """为用户推荐特定商品的最佳客制化组合（同步版本）"""
+        import concurrent.futures
+
+        def run_async_in_thread():
+            """在新线程中运行异步代码"""
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(
+                    self.get_suggested_customization_for_item_async(
+                        user_id, item_sku, item_constraints, item_available_temperatures,
+                        item_available_sizes, item_base_price
+                    )
+                )
+            finally:
+                loop.close()
+
         try:
             asyncio.get_running_loop()
-            return {
-                "suggested_customization": {},
-                "confidence": 0.5,
-                "reason": "推荐默认配置",
-                "estimated_price_adjustment": 0.0,
-                "estimated_final_price": item_base_price
-            }
+            # 有运行中的事件循环，使用线程池执行
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_async_in_thread)
+                return future.result(timeout=10)
         except RuntimeError:
+            # 没有运行中的事件循环，直接运行
             return asyncio.run(self.get_suggested_customization_for_item_async(
                 user_id, item_sku, item_constraints, item_available_temperatures,
                 item_available_sizes, item_base_price
