@@ -583,16 +583,16 @@
     <div class="slides-container" id="slidesContainer">
         <!-- Slide 1: 封面 -->
         <div class="slide slide-cover active" data-slide="1">
-            <h1>智能推荐系统 V2</h1>
-            <div class="subtitle">基于大模型的个性化推荐技术方案</div>
-            <div class="meta">2025年12月 技术汇报</div>
+            <h1>智能推荐系统 V3 MOP</h1>
+            <div class="subtitle">场景化 AI 点单推荐技术方案</div>
+            <div class="meta">2026年1月 技术汇报</div>
             <div class="tech-badges">
                 <span class="tech-badge">OpenAI GPT-4o-mini</span>
                 <span class="tech-badge">text-embedding-3-small</span>
                 <span class="tech-badge">FastAPI</span>
-                <span class="tech-badge">A/B Testing</span>
-                <span class="tech-badge" style="background: rgba(34,197,94,0.3);">订单权重</span>
-                <span class="tech-badge" style="background: rgba(59,130,246,0.4);">🎨 客制化推荐 NEW</span>
+                <span class="tech-badge" style="background: rgba(234,179,8,0.4);">🏪 MOP 场景化</span>
+                <span class="tech-badge" style="background: rgba(59,130,246,0.4);">🤖 AI 点单接口</span>
+                <span class="tech-badge" style="background: rgba(34,197,94,0.3);">☁️ CloudBase</span>
             </div>
         </div>
 
@@ -608,9 +608,10 @@
                     <li onclick="goToSlide(4)"><span class="toc-num">2</span> 系统架构设计</li>
                     <li onclick="goToSlide(6)"><span class="toc-num">3</span> 核心技术方案</li>
                     <li onclick="goToSlide(9)"><span class="toc-num">4</span> 推荐算法详解</li>
-                    <li onclick="goToSlide(11)"><span class="toc-num">5</span> V2新增功能 (含订单权重)</li>
-                    <li onclick="goToSlide(16)"><span class="toc-num">6</span> 性能指标与效果</li>
-                    <li onclick="goToSlide(18)"><span class="toc-num">7</span> 未来规划</li>
+                    <li onclick="goToSlide(11)"><span class="toc-num">5</span> V3 MOP 场景化推荐 (NEW)</li>
+                    <li onclick="goToSlide(14)"><span class="toc-num">6</span> AI 点单接口 (NEW)</li>
+                    <li onclick="goToSlide(16)"><span class="toc-num">7</span> 性能指标与效果</li>
+                    <li onclick="goToSlide(18)"><span class="toc-num">8</span> 部署与未来规划</li>
                 </ul>
             </div>
         </div>
@@ -1034,320 +1035,282 @@
             </div>
         </div>
 
-        <!-- Slide 11: V2新功能概览 -->
+        <!-- Slide 11: V3 MOP场景化推荐 -->
         <div class="slide" data-slide="11">
             <div class="slide-header">
-                <h2>5. V2新增功能概览</h2>
+                <h2>5. V3 MOP 场景化推荐</h2>
                 <span class="page-num">11</span>
             </div>
             <div class="slide-content">
                 <div class="three-column" style="grid-template-columns: repeat(3, 1fr);">
-                    <div class="card">
-                        <div class="card-icon">🧪</div>
-                        <h3>A/B测试框架</h3>
-                        <p>支持多算法对比实验，基于用户ID哈希确定性分组</p>
-                        <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
-                            • rec_algorithm: 3个变体<br>
-                            • reason_style: 2个变体
+                    <div class="card" style="border: 2px solid #eab308;">
+                        <div class="card-icon">🏪</div>
+                        <h3 style="color: #eab308;">门店选择</h3>
+                        <p>支持15+门店选择，展示门店信息和库存状态</p>
+                        <div style="margin-top: 12px; padding: 10px; background: #fef9c3; border-radius: 8px; font-size: 13px;">
+                            • 上海/北京/杭州/深圳/广州<br>
+                            • 门店类型: 商场/写字楼/车站/大学<br>
+                            • 实时库存状态显示
+                        </div>
+                    </div>
+                    <div class="card" style="border: 2px solid #eab308;">
+                        <div class="card-icon">🌤️</div>
+                        <h3 style="color: #eab308;">天气上下文</h3>
+                        <p>根据实时天气智能调整推荐，冷热饮品动态加权</p>
+                        <div style="margin-top: 12px; padding: 10px; background: #fef9c3; border-radius: 8px; font-size: 13px;">
+                            • 高温(>28°C): 冰饮+20%<br>
+                            • 低温(<15°C): 热饮+20%<br>
+                            • 雨天: 热饮+15%
+                        </div>
+                    </div>
+                    <div class="card" style="border: 2px solid #eab308;">
+                        <div class="card-icon">⏰</div>
+                        <h3 style="color: #eab308;">时段感知</h3>
+                        <p>根据当前时段自动调整推荐策略</p>
+                        <div style="margin-top: 12px; padding: 10px; background: #fef9c3; border-radius: 8px; font-size: 13px;">
+                            • 早晨: 咖啡+食品<br>
+                            • 下午: 茶饮+星冰乐<br>
+                            • 晚间: 无咖啡因优先
+                        </div>
+                    </div>
+                    <div class="card" style="border: 2px solid #eab308;">
+                        <div class="card-icon">🎯</div>
+                        <h3 style="color: #eab308;">快速场景</h3>
+                        <p>预设场景一键切换，快速模拟不同用户场景</p>
+                        <div style="margin-top: 12px; padding: 10px; background: #fef9c3; border-radius: 8px; font-size: 13px;">
+                            • 🏢 上班早高峰<br>
+                            • 🛍️ 周末休闲<br>
+                            • 📚 学习充电<br>
+                            • 🧊 夏日清凉
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-icon">👍</div>
-                        <h3>用户反馈收集</h3>
-                        <p>收集点赞/踩/点击/下单反馈，按商品和实验维度统计</p>
-                        <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
-                            • 满意率 = likes / total<br>
-                            • 转化率 = orders / views
-                        </div>
-                    </div>
-                    <div class="card" style="border: 2px solid var(--primary);">
-                        <div class="card-icon">🛒</div>
-                        <h3 style="color: var(--primary);">订单历史权重 (NEW)</h3>
-                        <p>基于订单历史的智能推荐加权，带时间衰减算法</p>
-                        <div style="margin-top: 12px; padding: 10px; background: #dcfce7; border-radius: 8px; font-size: 13px;">
-                            • 复购加权: 最高+100%<br>
-                            • 类别/标签偏好加权<br>
-                            • 30天半衰期时间衰减
+                        <div class="card-icon">🎨</div>
+                        <h3>客制化推荐</h3>
+                        <p>基于用户偏好智能推荐客制化组合</p>
+                        <div style="margin-top: 12px; padding: 10px; background: #e0f2fe; border-radius: 8px; font-size: 13px;">
+                            • 温度/杯型/糖度/奶类<br>
+                            • 预设管理一键应用
                         </div>
                     </div>
                     <div class="card">
                         <div class="card-icon">📊</div>
-                        <h3>用户历史行为</h3>
-                        <p>记录浏览/点击/下单行为，自动计算类别和标签偏好</p>
+                        <h3>上下文因子可视化</h3>
+                        <p>展示各上下文因子对推荐的影响</p>
                         <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
-                            • favorite_items (复购)<br>
-                            • category_preference
+                            • 时段因子: ±15%<br>
+                            • 天气因子: ±20%<br>
+                            • 门店因子: ±10%
                         </div>
                     </div>
-                    <div class="card">
-                        <div class="card-icon">⚡</div>
-                        <h3>Session实时个性化</h3>
-                        <p>会话内交互实时更新偏好，即时影响推荐</p>
-                        <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
-                            • liked_tags (喜欢)<br>
-                            • disliked_tags (排斥)
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-icon">💡</div>
-                        <h3>解释性增强</h3>
-                        <p>推荐结果可解释，展示各因素权重分解</p>
-                        <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
-                            • 分数因素分解<br>
-                            • 自然语言解释
-                        </div>
-                    </div>
-                    <div class="card" style="border: 2px solid #3b82f6; grid-column: span 3;">
-                        <div class="card-icon">🎨</div>
-                        <h3 style="color: #3b82f6;">客制化推荐 (NEW)</h3>
-                        <p>基于用户客制化偏好（温度、杯型、糖度、奶类）智能推荐商品并给出客制化建议</p>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px;">
-                            <div style="padding: 10px; background: #e0f2fe; border-radius: 8px; font-size: 13px; text-align: center;">
-                                <strong>客制化权重</strong><br>
-                                偏好匹配 0.8-1.5×
-                            </div>
-                            <div style="padding: 10px; background: #e0f2fe; border-radius: 8px; font-size: 13px; text-align: center;">
-                                <strong>智能建议</strong><br>
-                                推荐客制化组合
-                            </div>
-                            <div style="padding: 10px; background: #e0f2fe; border-radius: 8px; font-size: 13px; text-align: center;">
-                                <strong>预设管理</strong><br>
-                                一键应用偏好
-                            </div>
-                            <div style="padding: 10px; background: #e0f2fe; border-radius: 8px; font-size: 13px; text-align: center;">
-                                <strong>A/B测试</strong><br>
-                                策略/展示实验
-                            </div>
-                        </div>
-                    </div>
+                </div>
+                <div class="highlight-box" style="margin-top: 20px;">
+                    <h4>MOP 场景核心价值</h4>
+                    <p>模拟真实的 Mobile Order & Pay 点单场景，让用户感受到"此时此地此刻"的个性化推荐体验</p>
                 </div>
             </div>
         </div>
 
-        <!-- Slide 12: A/B测试详解 -->
+        <!-- Slide 12: 上下文因子架构 -->
         <div class="slide" data-slide="12">
             <div class="slide-header">
-                <h2>5. A/B测试框架详解</h2>
+                <h2>5. 上下文因子加权架构</h2>
                 <span class="page-num">12</span>
             </div>
             <div class="slide-content">
+                <div style="background: #f8f9fa; padding: 40px; border-radius: 16px; text-align: center; font-size: 18px; margin-bottom: 30px;">
+                    <strong>Final Score</strong> = Embedding × Rule × Behavior × Session × <span style="color: #eab308; font-weight: 600;">Context</span> × Customization
+                </div>
                 <div class="two-column">
                     <div>
-                        <h3 style="color: var(--primary); margin-bottom: 20px;">分组算法</h3>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">上下文因子计算</h3>
                         <div class="code-block">
-<span class="comment"># 基于用户ID的确定性分组</span>
-hash_input = f<span class="string">"{experiment_id}:{user_id}"</span>
-hash_value = md5(hash_input).hexdigest()
-bucket = <span class="keyword">int</span>(hash_value, <span class="number">16</span>) % <span class="number">100</span>
+<span class="comment"># 上下文因子 = 时段 × 天气 × 门店 × 场景</span>
+context_factor = <span class="number">1.0</span>
 
-<span class="comment"># 按权重分配变体</span>
-<span class="keyword">for</span> variant <span class="keyword">in</span> variants:
-    cumulative += variant[<span class="string">"weight"</span>]
-    <span class="keyword">if</span> bucket < cumulative:
-        <span class="keyword">return</span> variant
-                        </div>
+<span class="comment"># 时段因子</span>
+<span class="keyword">if</span> time == <span class="string">"morning"</span> <span class="keyword">and</span> category == <span class="string">"咖啡"</span>:
+    context_factor *= <span class="number">1.15</span>
 
-                        <div class="highlight-box">
-                            <h4>设计要点</h4>
-                            <p>同一用户多次访问始终进入相同分组，确保实验结果可信</p>
+<span class="comment"># 天气因子</span>
+<span class="keyword">if</span> temp > <span class="number">28</span> <span class="keyword">and</span> <span class="string">"冰"</span> <span class="keyword">in</span> temperatures:
+    context_factor *= <span class="number">1.20</span>
+
+<span class="comment"># 门店因子</span>
+<span class="keyword">if</span> item <span class="keyword">in</span> store.popular_items:
+    context_factor *= <span class="number">1.10</span>
                         </div>
                     </div>
                     <div>
-                        <h3 style="color: var(--primary); margin-bottom: 20px;">已配置实验</h3>
-
-                        <div class="card" style="margin-bottom: 16px;">
-                            <h3>推荐算法对比</h3>
-                            <table class="data-table" style="font-size: 14px;">
-                                <tr><td>embedding</td><td>34%</td><td>纯语义匹配</td></tr>
-                                <tr><td>embedding_plus</td><td>33%</td><td>+历史行为</td></tr>
-                                <tr><td>hybrid</td><td>33%</td><td>+规则融合</td></tr>
-                            </table>
-                        </div>
-
-                        <div class="card">
-                            <h3>推荐理由风格</h3>
-                            <table class="data-table" style="font-size: 14px;">
-                                <tr><td>concise</td><td>50%</td><td>简洁版 (15字)</td></tr>
-                                <tr><td>detailed</td><td>50%</td><td>详细版 (30字)</td></tr>
-                            </table>
-                        </div>
-
-                        <div class="card" style="border: 2px solid #3b82f6; margin-top: 16px;">
-                            <h3 style="color: #3b82f6;">🎨 客制化策略 (NEW)</h3>
-                            <table class="data-table" style="font-size: 14px;">
-                                <tr><td>user_history</td><td>34%</td><td>基于用户历史</td></tr>
-                                <tr><td>item_popular</td><td>33%</td><td>基于商品热门</td></tr>
-                                <tr><td>hybrid</td><td>33%</td><td>混合策略</td></tr>
-                            </table>
-                        </div>
-
-                        <div class="card" style="border: 2px solid #3b82f6; margin-top: 16px;">
-                            <h3 style="color: #3b82f6;">🎨 客制化展示 (NEW)</h3>
-                            <table class="data-table" style="font-size: 14px;">
-                                <tr><td>inline</td><td>50%</td><td>内联展示</td></tr>
-                                <tr><td>expandable</td><td>50%</td><td>可展开面板</td></tr>
-                            </table>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">各因子权重范围</h3>
+                        <table class="data-table">
+                            <tr><th>因子</th><th>条件</th><th>加权</th></tr>
+                            <tr><td>⏰ 时段</td><td>早晨+咖啡</td><td style="color: #22c55e;">+15%</td></tr>
+                            <tr><td>⏰ 时段</td><td>下午+茶饮</td><td style="color: #22c55e;">+10%</td></tr>
+                            <tr><td>🌡️ 天气</td><td>高温+冰饮</td><td style="color: #22c55e;">+20%</td></tr>
+                            <tr><td>🌡️ 天气</td><td>低温+热饮</td><td style="color: #22c55e;">+20%</td></tr>
+                            <tr><td>🏪 门店</td><td>门店热销</td><td style="color: #22c55e;">+10%</td></tr>
+                            <tr><td>🎯 场景</td><td>场景匹配</td><td style="color: #22c55e;">+5~15%</td></tr>
+                        </table>
+                        <div class="highlight-box" style="margin-top: 20px;">
+                            <h4>智能温度客制化</h4>
+                            <p>根据天气自动推荐温度：高温推荐冰饮，低温推荐热饮</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Slide 13: 解释性增强 -->
+        <!-- Slide 13: AI点单接口概述 -->
         <div class="slide" data-slide="13">
             <div class="slide-header">
-                <h2>5. 解释性增强</h2>
+                <h2>6. AI 点单接口概述</h2>
                 <span class="page-num">13</span>
             </div>
             <div class="slide-content">
                 <div class="two-column">
                     <div>
-                        <h3 style="color: var(--primary); margin-bottom: 20px;">分数拆解</h3>
-                        <p>每个推荐结果都包含详细的分数构成：</p>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">接口设计目标</h3>
+                        <ul class="content-list">
+                            <li>支持自然语言查询（"来一杯提神的咖啡"）</li>
+                            <li>硬约束过滤（无咖啡因、低卡、价格限制）</li>
+                            <li>置信度评估辅助 AI 决策是否追问</li>
+                            <li>生成建议的 AI 回复话术</li>
+                            <li>同时提供 REST API 和 MCP 接口</li>
+                        </ul>
 
-                        <div style="background: #f8f9fa; padding: 24px; border-radius: 12px; margin: 20px 0;">
-                            <div style="margin-bottom: 16px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span>Embedding相似度</span>
-                                    <strong>59.8%</strong>
-                                </div>
-                                <div style="height: 8px; background: #e9ecef; border-radius: 4px;">
-                                    <div style="width: 59.8%; height: 100%; background: var(--primary); border-radius: 4px;"></div>
-                                </div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span>业务规则</span>
-                                    <strong>×1.15</strong>
-                                </div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span>历史行为</span>
-                                    <strong style="color: #22c55e;">×1.37 ⬆️</strong>
-                                </div>
-                            </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span>Session偏好</span>
-                                    <strong>×1.00</strong>
-                                </div>
-                            </div>
-                            <div style="background: #e0f2fe; padding: 8px 12px; border-radius: 6px; margin-top: 12px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span style="color: #3b82f6;">🎨 客制化匹配</span>
-                                    <strong style="color: #3b82f6;">×1.20 ⬆️</strong>
-                                </div>
-                            </div>
-                            <hr style="margin: 16px 0; border: none; border-top: 2px solid var(--primary);">
-                            <div style="display: flex; justify-content: space-between; font-size: 20px;">
-                                <span>最终得分</span>
-                                <strong style="color: var(--primary);">82.4%</strong>
-                            </div>
+                        <h3 style="color: var(--primary); margin: 30px 0 20px;">MCP 工具列表</h3>
+                        <div class="card" style="margin-bottom: 12px;">
+                            <h3>recommend_products</h3>
+                            <p>商品推荐，支持约束和置信度</p>
+                        </div>
+                        <div class="card" style="margin-bottom: 12px;">
+                            <h3>get_user_preferences</h3>
+                            <p>获取用户历史偏好</p>
+                        </div>
+                        <div class="card">
+                            <h3>get_store_menu</h3>
+                            <p>获取门店菜单和库存</p>
                         </div>
                     </div>
                     <div>
-                        <h3 style="color: var(--primary); margin-bottom: 20px;">推荐因素解释</h3>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">REST API 端点</h3>
+                        <table class="data-table" style="font-size: 14px;">
+                            <tr><th>端点</th><th>功能</th></tr>
+                            <tr style="background: #dbeafe;">
+                                <td><code>POST /api/ai-ordering/recommend</code></td>
+                                <td>AI 点单推荐</td>
+                            </tr>
+                            <tr style="background: #dbeafe;">
+                                <td><code>GET /api/ai-ordering/user-preferences/{id}</code></td>
+                                <td>用户偏好查询</td>
+                            </tr>
+                            <tr>
+                                <td><code>POST /api/embedding/recommend/v3</code></td>
+                                <td>场景化推荐</td>
+                            </tr>
+                            <tr>
+                                <td><code>GET /api/stores</code></td>
+                                <td>门店列表</td>
+                            </tr>
+                            <tr>
+                                <td><code>GET /api/weather</code></td>
+                                <td>天气信息</td>
+                            </tr>
+                        </table>
 
-                        <div class="card" style="margin-bottom: 16px;">
-                            <h3>语义匹配因素</h3>
-                            <p>"与您的偏好「想喝提神咖啡」高度相关"</p>
-                            <div style="margin-top: 10px; color: var(--text-light);">贡献度: 40%</div>
-                        </div>
-
-                        <div class="card" style="margin-bottom: 16px;">
-                            <h3>历史偏好因素</h3>
-                            <p>"基于您的购买和浏览历史"</p>
-                            <div style="margin-top: 10px; color: var(--text-light);">贡献度: 30%</div>
-                        </div>
-
-                        <div class="card">
-                            <h3>关键词匹配</h3>
-                            <p>"匹配了您偏好的「提神、浓郁」"</p>
-                            <div style="margin-top: 10px; color: var(--text-light);">贡献度: 15%</div>
-                        </div>
-
-                        <div class="card" style="border: 2px solid #3b82f6;">
-                            <h3 style="color: #3b82f6;">🎨 客制化建议 (NEW)</h3>
-                            <p>"推荐冰饮·大杯·无糖·燕麦奶"</p>
-                            <div style="margin-top: 10px; color: #3b82f6;">置信度: 78%</div>
+                        <div class="highlight-box" style="margin-top: 20px;">
+                            <h4>Claude Desktop 集成</h4>
+                            <p>配置 MCP Server 后，Claude 可直接调用推荐工具完成点单</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Slide 14: 订单历史权重详解 -->
+        <!-- Slide 14: AI点单约束与置信度 -->
         <div class="slide" data-slide="14">
             <div class="slide-header">
-                <h2>5. 订单历史权重详解 (NEW)</h2>
+                <h2>6. AI 点单约束与置信度</h2>
                 <span class="page-num">14</span>
             </div>
             <div class="slide-content">
                 <div class="two-column">
                     <div>
-                        <h3 style="color: var(--primary); margin-bottom: 20px;">四维权重计算</h3>
-                        <div style="background: #f8f9fa; padding: 24px; border-radius: 12px; font-size: 16px; margin-bottom: 20px;">
-                            <strong>订单权重 = 复购 × 类别 × 标签 × 价格</strong>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">硬约束过滤 (Constraints)</h3>
+                        <table class="data-table">
+                            <tr><th>约束</th><th>说明</th><th>过滤逻辑</th></tr>
+                            <tr>
+                                <td><code>caffeine_free</code></td>
+                                <td>无咖啡因</td>
+                                <td>排除咖啡类+含咖啡星冰乐</td>
+                            </tr>
+                            <tr>
+                                <td><code>low_calorie</code></td>
+                                <td>低卡路里</td>
+                                <td>卡路里 < 100</td>
+                            </tr>
+                            <tr>
+                                <td><code>dairy_free</code></td>
+                                <td>无乳制品</td>
+                                <td>排除含奶/拿铁商品</td>
+                            </tr>
+                            <tr>
+                                <td><code>max_price</code></td>
+                                <td>最高价格</td>
+                                <td>base_price ≤ max</td>
+                            </tr>
+                            <tr>
+                                <td><code>temperature_only</code></td>
+                                <td>限定温度</td>
+                                <td>仅"冰"或"热"</td>
+                            </tr>
+                        </table>
+
+                        <div class="code-block" style="margin-top: 20px; font-size: 13px;">
+<span class="comment"># 示例请求</span>
+{
+  <span class="string">"query"</span>: <span class="string">"来一杯低卡饮品"</span>,
+  <span class="string">"constraints"</span>: {
+    <span class="string">"low_calorie"</span>: <span class="keyword">true</span>,
+    <span class="string">"max_price"</span>: <span class="number">35</span>
+  }
+}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">置信度计算</h3>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                            <strong>Confidence</strong> = 0.4×语义 + 0.25×行为 + 0.2×上下文 + 0.15×客制化
                         </div>
 
-                        <table class="data-table">
-                            <tr><th>因素</th><th>算法</th><th>权重范围</th></tr>
-                            <tr>
-                                <td><strong>复购加权</strong></td>
-                                <td>每次购买+20% × 时间衰减</td>
-                                <td>1.0 ~ 2.0</td>
+                        <table class="data-table" style="font-size: 14px;">
+                            <tr><th>等级</th><th>范围</th><th>建议行为</th></tr>
+                            <tr style="background: #dcfce7;">
+                                <td><strong>High</strong></td>
+                                <td>≥ 0.7</td>
+                                <td>直接推荐</td>
                             </tr>
-                            <tr>
-                                <td><strong>类别偏好</strong></td>
-                                <td>历史订单类别占比 × 0.5</td>
-                                <td>1.0 ~ 1.5</td>
+                            <tr style="background: #fef9c3;">
+                                <td><strong>Medium</strong></td>
+                                <td>0.5 - 0.7</td>
+                                <td>可推荐，可追问</td>
                             </tr>
-                            <tr>
-                                <td><strong>标签匹配</strong></td>
-                                <td>偏好标签匹配度 × 0.4</td>
-                                <td>1.0 ~ 1.4</td>
-                            </tr>
-                            <tr>
-                                <td><strong>价格匹配</strong></td>
-                                <td>符合消费习惯范围(0.7-1.5x)</td>
-                                <td>0.9 ~ 1.1</td>
+                            <tr style="background: #fee2e2;">
+                                <td><strong>Low</strong></td>
+                                <td>< 0.5</td>
+                                <td>建议追问澄清</td>
                             </tr>
                         </table>
 
                         <div class="highlight-box" style="margin-top: 20px;">
-                            <h4>时间衰减算法</h4>
-                            <p>采用30天半衰期指数衰减：weight = 0.5^(days/30)<br>确保近期订单影响更大，远期订单逐渐淡化</p>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style="color: var(--primary); margin-bottom: 20px;">效果对比演示</h3>
-                        <p style="margin-bottom: 16px;">模拟20笔订单历史（咖啡60%、茶饮25%、星冰乐15%）</p>
-
-                        <div class="comparison-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-                            <div class="comparison-item highlight">
-                                <h4>老用户</h4>
-                                <div class="value">133.4%</div>
-                                <p style="font-size: 13px; margin-top: 8px;">有订单历史</p>
-                            </div>
-                            <div class="comparison-item">
-                                <h4>新用户</h4>
-                                <div class="value" style="color: var(--accent);">61.6%</div>
-                                <p style="font-size: 13px; margin-top: 8px;">无订单历史</p>
-                            </div>
+                            <h4>追问机制</h4>
+                            <p>当 confidence < 0.5 或无匹配结果时，返回 <code>need_clarification: true</code> 和建议追问选项</p>
                         </div>
 
-                        <div style="background: #dcfce7; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center;">
-                            <div style="font-size: 36px; font-weight: 700; color: #166534;">+116.4%</div>
-                            <div style="font-size: 14px; color: #166534; margin-top: 8px;">推荐效果提升</div>
-                        </div>
-
-                        <div class="card" style="margin-top: 20px;">
-                            <h3>推荐解释示例</h3>
-                            <p style="font-size: 14px; color: var(--text-light); margin-top: 8px;">
-                                "馥芮白" → 订单加权 ×2.50<br>
-                                <span style="color: #166534;">💡 曾购买5次；偏好咖啡类别；偏好标签: 浓郁, 澳洲风味</span>
-                            </p>
+                        <div class="card" style="margin-top: 16px;">
+                            <h3>AI 回复话术示例</h3>
+                            <p style="font-size: 14px;">"为您推荐冷萃咖啡，冰/大杯，32元。口感顺滑，完美提神！"</p>
                         </div>
                     </div>
                 </div>
@@ -1357,106 +1320,116 @@ bucket = <span class="keyword">int</span>(hash_value, <span class="number">16</s
         <!-- Slide 15: API接口 -->
         <div class="slide" data-slide="15">
             <div class="slide-header">
-                <h2>5. V2 API接口一览</h2>
+                <h2>6. V3 API 接口一览</h2>
                 <span class="page-num">15</span>
             </div>
             <div class="slide-content">
                 <div class="two-column" style="gap: 30px;">
                     <div>
-                        <h3 style="color: var(--primary); margin-bottom: 16px;">核心推荐 & 实验</h3>
+                        <h3 style="color: #3b82f6; margin-bottom: 16px;">🤖 AI 点单接口 (NEW)</h3>
                         <table class="data-table" style="font-size: 14px;">
-                            <tr>
-                                <th>接口</th>
-                                <th>功能</th>
+                            <tr><th>接口</th><th>功能</th></tr>
+                            <tr style="background: #dbeafe;">
+                                <td><code>/api/ai-ordering/recommend</code></td>
+                                <td>AI 点单推荐</td>
                             </tr>
+                            <tr style="background: #dbeafe;">
+                                <td><code>/api/ai-ordering/user-preferences/{id}</code></td>
+                                <td>用户偏好</td>
+                            </tr>
+                        </table>
+
+                        <h3 style="color: #eab308; margin: 20px 0 16px;">🏪 MOP 场景接口 (NEW)</h3>
+                        <table class="data-table" style="font-size: 14px;">
+                            <tr><th>接口</th><th>功能</th></tr>
+                            <tr style="background: #fef9c3;">
+                                <td><code>/api/embedding/recommend/v3</code></td>
+                                <td>场景化推荐</td>
+                            </tr>
+                            <tr style="background: #fef9c3;">
+                                <td><code>/api/stores</code></td>
+                                <td>门店列表</td>
+                            </tr>
+                            <tr style="background: #fef9c3;">
+                                <td><code>/api/weather</code></td>
+                                <td>天气查询</td>
+                            </tr>
+                            <tr style="background: #fef9c3;">
+                                <td><code>/api/context/scenarios</code></td>
+                                <td>场景列表</td>
+                            </tr>
+                        </table>
+
+                        <h3 style="color: var(--primary); margin: 20px 0 16px;">核心推荐 & 实验</h3>
+                        <table class="data-table" style="font-size: 14px;">
+                            <tr><th>接口</th><th>功能</th></tr>
                             <tr>
                                 <td><code>/api/embedding/recommend/v2</code></td>
                                 <td>增强版推荐</td>
                             </tr>
                             <tr>
                                 <td><code>/api/experiments</code></td>
-                                <td>获取A/B实验</td>
-                            </tr>
-                            <tr>
-                                <td><code>/api/experiments/{id}/stats</code></td>
-                                <td>实验统计</td>
+                                <td>A/B 实验</td>
                             </tr>
                             <tr>
                                 <td><code>/api/feedback</code></td>
-                                <td>记录反馈</td>
+                                <td>用户反馈</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary); margin-bottom: 16px;">订单 & 行为</h3>
+                        <table class="data-table" style="font-size: 14px;">
+                            <tr><th>接口</th><th>功能</th></tr>
+                            <tr>
+                                <td><code>/api/orders</code></td>
+                                <td>记录订单</td>
+                            </tr>
+                            <tr>
+                                <td><code>/api/orders/simulate</code></td>
+                                <td>模拟订单</td>
                             </tr>
                             <tr>
                                 <td><code>/api/behavior</code></td>
                                 <td>记录行为</td>
                             </tr>
                             <tr>
-                                <td><code>/api/session/interaction</code></td>
-                                <td>Session交互</td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div>
-                        <h3 style="color: var(--primary); margin-bottom: 16px;">订单历史API (NEW)</h3>
-                        <table class="data-table" style="font-size: 14px;">
-                            <tr>
-                                <th>接口</th>
-                                <th>功能</th>
-                            </tr>
-                            <tr style="background: #dcfce7;">
-                                <td><code>/api/orders</code></td>
-                                <td>记录单个订单</td>
-                            </tr>
-                            <tr style="background: #dcfce7;">
-                                <td><code>/api/orders/batch</code></td>
-                                <td>批量记录订单</td>
-                            </tr>
-                            <tr style="background: #dcfce7;">
-                                <td><code>/api/orders/user/{id}</code></td>
-                                <td>获取用户订单历史</td>
-                            </tr>
-                            <tr style="background: #dcfce7;">
-                                <td><code>/api/orders/simulate</code></td>
-                                <td>模拟生成订单(测试)</td>
-                            </tr>
-                            <tr style="background: #dcfce7;">
-                                <td><code>/api/orders/stats</code></td>
-                                <td>订单统计概览</td>
-                            </tr>
-                            <tr style="background: #dcfce7;">
-                                <td><code>/api/orders/boost/{user}/{sku}</code></td>
-                                <td>查看权重详情</td>
+                                <td><code>/api/cart/{session_id}</code></td>
+                                <td>购物车</td>
                             </tr>
                         </table>
 
-                        <h3 style="color: #3b82f6; margin: 20px 0 16px;">🎨 预设管理API (NEW)</h3>
+                        <h3 style="color: var(--primary); margin: 20px 0 16px;">客制化 & 预设</h3>
                         <table class="data-table" style="font-size: 14px;">
+                            <tr><th>接口</th><th>功能</th></tr>
                             <tr>
-                                <th>接口</th>
-                                <th>功能</th>
-                            </tr>
-                            <tr style="background: #e0f2fe;">
                                 <td><code>/api/presets</code></td>
-                                <td>创建客制化预设</td>
+                                <td>创建预设</td>
                             </tr>
-                            <tr style="background: #e0f2fe;">
+                            <tr>
                                 <td><code>/api/presets/user/{id}</code></td>
-                                <td>获取用户预设列表</td>
+                                <td>用户预设</td>
                             </tr>
-                            <tr style="background: #e0f2fe;">
-                                <td><code>/api/presets/{id}/apply/{sku}</code></td>
-                                <td>应用预设到商品</td>
-                            </tr>
-                            <tr style="background: #e0f2fe;">
+                            <tr>
                                 <td><code>/api/behavior/user/{id}</code></td>
-                                <td>获取客制化偏好</td>
+                                <td>客制化偏好</td>
+                            </tr>
+                        </table>
+
+                        <h3 style="color: #22c55e; margin: 20px 0 16px;">☁️ 运维接口</h3>
+                        <table class="data-table" style="font-size: 14px;">
+                            <tr><th>接口</th><th>功能</th></tr>
+                            <tr style="background: #dcfce7;">
+                                <td><code>/api/health</code></td>
+                                <td>健康检查</td>
                             </tr>
                         </table>
                     </div>
                 </div>
 
-                <div class="highlight-box" style="margin-top: 30px;">
-                    <h4>API总数</h4>
-                    <p>V2版本共提供 <strong>22个</strong> API接口，覆盖推荐、实验、反馈、行为、Session、订单、<span style="color: #3b82f6; font-weight: 600;">客制化预设</span>全链路</p>
+                <div class="highlight-box" style="margin-top: 20px;">
+                    <h4>API 总数</h4>
+                    <p>V3 版本共提供 <strong>30+</strong> API 接口，覆盖 <span style="color: #3b82f6;">AI 点单</span>、<span style="color: #eab308;">MOP 场景</span>、推荐、实验、反馈、行为、订单、客制化全链路</p>
                 </div>
             </div>
         </div>
@@ -1581,31 +1554,57 @@ bucket = <span class="keyword">int</span>(hash_value, <span class="number">16</s
             </div>
         </div>
 
-        <!-- Slide 18: 未来规划 -->
+        <!-- Slide 18: 部署与未来规划 -->
         <div class="slide" data-slide="18">
             <div class="slide-header">
-                <h2>7. 未来规划</h2>
+                <h2>8. 部署与未来规划</h2>
                 <span class="page-num">18</span>
             </div>
             <div class="slide-content">
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <h4>短期 (1-2周)</h4>
-                        <p>• 接入真实用户数据验证效果<br>• 完善A/B测试指标看板<br>• 优化推荐延迟（并行化LLM调用）</p>
+                <div class="two-column">
+                    <div>
+                        <h3 style="color: #22c55e; margin-bottom: 20px;">☁️ CloudBase 容器部署</h3>
+                        <div class="card" style="border: 2px solid #22c55e; margin-bottom: 16px;">
+                            <h3 style="color: #22c55e;">Docker 容器化</h3>
+                            <p style="font-size: 14px;">Python 3.11 + uv + FastAPI</p>
+                            <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px; font-size: 13px;">
+                                • Dockerfile 自动构建<br>
+                                • 健康检查端点 /api/health<br>
+                                • 环境变量配置 API Keys
+                            </div>
+                        </div>
+                        <div class="card" style="border: 2px solid #22c55e;">
+                            <h3 style="color: #22c55e;">腾讯云托管</h3>
+                            <p style="font-size: 14px;">按量计费，自动扩缩容</p>
+                            <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px; font-size: 13px;">
+                                • 最小副本数: 0 (零费用待机)<br>
+                                • CPU: 1核 / 内存: 2GB<br>
+                                • 自动扩容至 10 副本
+                            </div>
+                        </div>
                     </div>
-                    <div class="timeline-item">
-                        <h4>中期 (1-2月)</h4>
-                        <p>• 引入更多用户行为信号（停留时长、滚动深度）<br>• 实现推荐结果的离线评估体系<br>• 探索多模态推荐（商品图片理解）</p>
-                    </div>
-                    <div class="timeline-item">
-                        <h4>长期 (3-6月)</h4>
-                        <p>• 构建私有化Embedding模型（降低成本）<br>• 实现Agent化交互式推荐<br>• 跨场景推荐能力（外卖、到店、周边）</p>
+                    <div>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;">未来规划</h3>
+                        <div class="timeline" style="padding-left: 30px;">
+                            <div class="timeline-item" style="padding-left: 20px;">
+                                <h4>短期</h4>
+                                <p style="font-size: 14px;">• 接入真实用户数据验证<br>• AI Agent 对话式点单</p>
+                            </div>
+                            <div class="timeline-item" style="padding-left: 20px;">
+                                <h4>中期</h4>
+                                <p style="font-size: 14px;">• 多模态推荐（图片理解）<br>• 离线评估体系</p>
+                            </div>
+                            <div class="timeline-item" style="padding-left: 20px;">
+                                <h4>长期</h4>
+                                <p style="font-size: 14px;">• 私有化 Embedding 模型<br>• 跨场景推荐能力</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="highlight-box" style="margin-top: 40px;">
+                <div class="highlight-box" style="margin-top: 30px;">
                     <h4>核心演进方向</h4>
-                    <p>从"理解用户说了什么"到"理解用户想要什么"，构建真正懂用户的智能推荐系统</p>
+                    <p>从"理解用户说了什么"到"理解用户想要什么"，构建真正懂用户的智能 AI 点单系统</p>
                 </div>
             </div>
         </div>
@@ -1621,37 +1620,35 @@ bucket = <span class="keyword">int</span>(hash_value, <span class="number">16</s
                     <div class="card">
                         <div class="card-icon">✅</div>
                         <h3>已完成</h3>
-                        <ul class="content-list">
-                            <li>基于OpenAI Embedding的语义推荐</li>
-                            <li>LLM生成用户画像和推荐理由</li>
-                            <li>A/B测试框架（4实验，9变体）</li>
+                        <ul class="content-list" style="font-size: 15px;">
+                            <li>基于 OpenAI Embedding 的语义推荐</li>
+                            <li>LLM 生成用户画像和推荐理由</li>
+                            <li>A/B 测试框架（多实验多变体）</li>
                             <li>用户反馈收集与统计</li>
                             <li>历史行为画像与加权</li>
-                            <li>Session实时个性化</li>
-                            <li style="color: var(--primary); font-weight: 600;">订单历史权重（时间衰减）✨</li>
-                            <li style="color: #3b82f6; font-weight: 600;">🎨 客制化推荐（偏好加权+智能建议）NEW</li>
-                            <li style="color: #3b82f6; font-weight: 600;">🎨 预设管理（一键应用偏好）NEW</li>
-                            <li>推荐结果解释性增强</li>
-                            <li>完整的Web演示界面</li>
+                            <li style="color: #eab308; font-weight: 600;">🏪 MOP 场景化推荐（门店/天气/时段）NEW</li>
+                            <li style="color: #3b82f6; font-weight: 600;">🤖 AI 点单接口（约束/置信度/话术）NEW</li>
+                            <li style="color: #3b82f6; font-weight: 600;">🔌 MCP 服务器（Claude 集成）NEW</li>
+                            <li style="color: #22c55e; font-weight: 600;">☁️ CloudBase 容器化部署 NEW</li>
                         </ul>
                     </div>
                     <div class="card">
                         <div class="card-icon">🎯</div>
                         <h3>核心价值</h3>
-                        <ul class="content-list">
-                            <li>验证了LLM在推荐场景的可行性</li>
-                            <li>语义匹配度达到75%（vs TF-IDF 0%）</li>
-                            <li style="color: #166534; font-weight: 600;">订单权重带来116%推荐提升 ⬆️</li>
-                            <li style="color: #3b82f6; font-weight: 600;">🎨 客制化偏好智能识别与建议</li>
-                            <li>行为加权带来30%+的权重提升</li>
+                        <ul class="content-list" style="font-size: 15px;">
+                            <li>验证了 LLM 在推荐场景的可行性</li>
+                            <li>语义匹配度达到 75%（vs TF-IDF 0%）</li>
+                            <li style="color: #eab308; font-weight: 600;">🏪 上下文感知提升推荐精准度</li>
+                            <li style="color: #3b82f6; font-weight: 600;">🤖 AI 点单置信度辅助决策</li>
+                            <li>行为加权带来 30%+ 权重提升</li>
                             <li>可解释推荐增强用户信任</li>
-                            <li>完整的技术方案可复用</li>
+                            <li style="color: #22c55e; font-weight: 600;">☁️ 一键部署，按量计费</li>
                         </ul>
                     </div>
                 </div>
 
                 <div style="text-align: center; margin-top: 40px;">
-                    <a href="/embedding-v2" style="display: inline-block; padding: 16px 40px; background: var(--primary); color: white; text-decoration: none; border-radius: 30px; font-size: 18px; font-weight: 600;">
+                    <a href="/" style="display: inline-block; padding: 16px 40px; background: var(--primary); color: white; text-decoration: none; border-radius: 30px; font-size: 18px; font-weight: 600;">
                         查看在线演示 →
                     </a>
                 </div>
@@ -1665,11 +1662,15 @@ bucket = <span class="keyword">int</span>(hash_value, <span class="number">16</s
             <div class="contact-info">
                 <div class="contact-item">
                     <div>在线演示</div>
-                    <strong>/embedding-v2</strong>
+                    <strong>/</strong>
                 </div>
                 <div class="contact-item">
-                    <div>技术文档</div>
-                    <strong>docs/technical_solution.md</strong>
+                    <div>API 文档</div>
+                    <strong>docs/AI_ORDERING_MCP.md</strong>
+                </div>
+                <div class="contact-item">
+                    <div>部署文档</div>
+                    <strong>docs/CLOUDBASE_DEPLOY.md</strong>
                 </div>
             </div>
         </div>

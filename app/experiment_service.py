@@ -229,6 +229,30 @@ class ABTestService:
                 ],
                 "status": "active",
                 "created_at": time.time()
+            },
+            {
+                "experiment_id": "context_weight",
+                "name": "上下文因子权重",
+                "description": "测试不同上下文因子权重对推荐效果的影响",
+                "variants": [
+                    {"id": "low", "name": "低权重(1.1x)", "weight": 33},
+                    {"id": "medium", "name": "中权重(1.3x)", "weight": 34},
+                    {"id": "high", "name": "高权重(1.5x)", "weight": 33}
+                ],
+                "status": "active",
+                "created_at": time.time()
+            },
+            {
+                "experiment_id": "weather_adaptation",
+                "name": "天气适配策略",
+                "description": "测试天气因素对推荐的影响程度",
+                "variants": [
+                    {"id": "none", "name": "不启用", "weight": 25},
+                    {"id": "temperature_only", "name": "仅温度", "weight": 25},
+                    {"id": "full", "name": "完整适配", "weight": 50}
+                ],
+                "status": "active",
+                "created_at": time.time()
             }
         ]
 
@@ -1217,7 +1241,8 @@ class BehaviorService:
         item_constraints: Optional[dict],
         item_available_temperatures: list[str],
         item_available_sizes: list[str],
-        item_base_price: float
+        item_base_price: float,
+        weather_context: Optional[dict] = None  # 🆕 添加天气上下文参数
     ) -> dict:
         """为用户推荐特定商品的最佳客制化组合（异步版本）"""
         profile = await self.get_user_profile_async(user_id)
@@ -1261,32 +1286,66 @@ class BehaviorService:
         price_adjustment = 0.0
         used_preset = has_preset and not profile.get("customization_preference")
 
-        # 1. 温度推荐
+        # 1. 温度推荐 (🆕 考虑天气因子)
+        weather_temp_boost = {}  # 天气对温度的加权
+        weather_reason_text = None
+
+        if weather_context:
+            weather_temp = weather_context.get("temperature", 25)  # 实际温度
+            boost_temps = weather_context.get("boost_temperatures", [])
+            demote_temps = weather_context.get("demote_temperatures", [])
+
+            # 根据天气计算温度偏好加权
+            for bt in boost_temps:
+                weather_temp_boost[bt.upper()] = 0.3  # 天气推荐的温度加权30%
+            for dt in demote_temps:
+                weather_temp_boost[dt.upper()] = -0.2  # 天气不推荐的温度减权20%
+
+            # 生成天气原因
+            if weather_temp <= 15 and "HOT" in [t.upper() for t in boost_temps]:
+                weather_reason_text = f"天气{weather_temp}°C较冷推荐热饮"
+            elif weather_temp >= 28 and "ICED" in [t.upper() for t in boost_temps]:
+                weather_reason_text = f"天气{weather_temp}°C较热推荐冰饮"
+
         if item_available_temperatures:
             temp_pref = customization_pref.get("temperature", {})
-            if temp_pref:
-                for temp, ratio in sorted(temp_pref.items(), key=lambda x: -x[1]):
-                    temp_upper = temp.upper()
-                    temp_values = [t.upper() for t in item_available_temperatures]
-                    if temp_upper in temp_values or temp in item_available_temperatures:
-                        suggested["temperature"] = temp
-                        confidence_factors.append(ratio)
-                        if ratio > 0.5:
-                            temp_display = {"HOT": "热", "ICED": "冰", "WARM": "温"}.get(temp_upper, temp)
-                            reasons.append(f"您偏好{temp_display}饮")
-                        break
-                else:
-                    if item_constraints and item_constraints.get("default_temperature"):
-                        suggested["temperature"] = item_constraints["default_temperature"]
-                    else:
-                        suggested["temperature"] = item_available_temperatures[0]
-                    confidence_factors.append(0.3)
+            temp_values_upper = [t.upper() for t in item_available_temperatures]
+
+            # 🆕 合并用户偏好和天气因子
+            combined_temp_scores = {}
+            for temp in item_available_temperatures:
+                temp_upper = temp.upper()
+                user_pref_score = temp_pref.get(temp, 0) + temp_pref.get(temp_upper, 0)
+                weather_boost = weather_temp_boost.get(temp_upper, 0)
+                combined_temp_scores[temp] = user_pref_score + weather_boost
+
+            if combined_temp_scores:
+                # 按综合得分排序
+                sorted_temps = sorted(combined_temp_scores.items(), key=lambda x: -x[1])
+                best_temp, best_score = sorted_temps[0]
+
+                suggested["temperature"] = best_temp
+                # 置信度基于用户偏好部分
+                user_pref_score = temp_pref.get(best_temp, 0) + temp_pref.get(best_temp.upper(), 0)
+                confidence_factors.append(max(user_pref_score, 0.4))
+
+                best_temp_upper = best_temp.upper()
+                temp_display = {"HOT": "热", "ICED": "冰", "WARM": "温"}.get(best_temp_upper, best_temp)
+
+                # 添加推荐原因
+                if weather_reason_text and weather_temp_boost.get(best_temp_upper, 0) > 0:
+                    reasons.append(weather_reason_text)
+                elif user_pref_score > 0.5:
+                    reasons.append(f"您偏好{temp_display}饮")
             else:
                 if item_constraints and item_constraints.get("default_temperature"):
                     suggested["temperature"] = item_constraints["default_temperature"]
                 else:
                     suggested["temperature"] = item_available_temperatures[0]
-                confidence_factors.append(0.5)
+                confidence_factors.append(0.3)
+
+        # 记录天气因子影响 (用于可视化展示)
+        suggested["_weather_temp_boost"] = weather_temp_boost
 
         # 2. 杯型推荐
         if item_available_sizes:
@@ -1402,12 +1461,20 @@ class BehaviorService:
             confidence = 0.5
 
         # 🆕 如果有预设，即使是新用户也使用预设推荐
+        # 确定置信度来源
+        confidence_source = "history"  # 默认来源是历史偏好
         if profile["is_new_user"] and not has_preset:
             confidence = min(confidence, 0.4)
             reasons = ["推荐默认配置"]
+            confidence_source = "default"
         elif used_preset and not reasons:
-            reasons = ["基于您的预设「" + user_presets[0].get("name", "我的预设") + "」推荐"]
-            confidence = max(confidence, 0.7)  # 预设推荐置信度较高
+            preset_name = user_presets[0].get("name", "我的预设")
+            reasons = [f"基于您的预设「{preset_name}」推荐"]
+            # 预设置信度基于confidence_factors的平均值，但至少0.6
+            confidence = max(confidence, 0.6)
+            confidence_source = "preset"
+        elif has_preset:
+            confidence_source = "preset_history"  # 预设+历史混合
 
         estimated_final_price = item_base_price + price_adjustment
 
@@ -1422,6 +1489,7 @@ class BehaviorService:
         return {
             "suggested_customization": suggested,
             "confidence": round(confidence, 2),
+            "confidence_source": confidence_source,  # 新增: 置信度来源
             "reason": reason_text,
             "estimated_price_adjustment": round(price_adjustment, 2),
             "estimated_final_price": round(estimated_final_price, 2)
@@ -1434,7 +1502,8 @@ class BehaviorService:
         item_constraints: Optional[dict],
         item_available_temperatures: list[str],
         item_available_sizes: list[str],
-        item_base_price: float
+        item_base_price: float,
+        weather_context: Optional[dict] = None  # 🆕 添加天气上下文参数
     ) -> dict:
         """为用户推荐特定商品的最佳客制化组合（同步版本）"""
         import concurrent.futures
@@ -1447,7 +1516,7 @@ class BehaviorService:
                 return loop.run_until_complete(
                     self.get_suggested_customization_for_item_async(
                         user_id, item_sku, item_constraints, item_available_temperatures,
-                        item_available_sizes, item_base_price
+                        item_available_sizes, item_base_price, weather_context
                     )
                 )
             finally:
@@ -1463,7 +1532,7 @@ class BehaviorService:
             # 没有运行中的事件循环，直接运行
             return asyncio.run(self.get_suggested_customization_for_item_async(
                 user_id, item_sku, item_constraints, item_available_temperatures,
-                item_available_sizes, item_base_price
+                item_available_sizes, item_base_price, weather_context
             ))
 
     async def get_order_stats_async(self) -> dict:
@@ -2101,6 +2170,434 @@ class PresetService:
         }
 
 
+# ============ 转化漏斗服务 ============
+
+class ConversionFunnelService:
+    """转化漏斗追踪服务"""
+
+    # 漏斗事件类型
+    EVENT_TYPES = ["impression", "click", "add_to_cart", "order", "reorder"]
+
+    def __init__(self):
+        self._metrics_cache: dict = {}
+
+    async def record_event_async(
+        self,
+        user_id: str,
+        session_id: str,
+        event_type: str,
+        item_sku: str = None,
+        store_id: str = None,
+        experiment_id: str = None,
+        variant: str = None,
+        context: dict = None
+    ) -> dict:
+        """记录转化漏斗事件"""
+        if event_type not in self.EVENT_TYPES:
+            return {"status": "error", "message": f"Invalid event type: {event_type}"}
+
+        db = await get_db()
+
+        await db.execute(
+            """
+            INSERT INTO conversion_events
+            (user_id, session_id, event_type, item_sku, store_id, experiment_id, variant, context, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                session_id,
+                event_type,
+                item_sku,
+                store_id,
+                experiment_id,
+                variant,
+                json.dumps(context) if context else None,
+                time.time()
+            )
+        )
+
+        # 更新上下文维度指标
+        if context:
+            await self._update_context_metrics(event_type, context, experiment_id, variant)
+
+        await db.commit()
+
+        return {
+            "status": "recorded",
+            "event_type": event_type,
+            "user_id": user_id,
+            "session_id": session_id
+        }
+
+    def record_event(self, *args, **kwargs) -> dict:
+        """同步版本"""
+        return _run_async(self.record_event_async(*args, **kwargs))
+
+    async def _update_context_metrics(
+        self,
+        event_type: str,
+        context: dict,
+        experiment_id: str = None,
+        variant: str = None
+    ):
+        """更新上下文维度指标汇总"""
+        db = await get_db()
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        # 需要追踪的维度
+        dimensions = [
+            ("time_of_day", context.get("time_of_day")),
+            ("weather", context.get("weather", {}).get("weather_type") if isinstance(context.get("weather"), dict) else context.get("weather")),
+            ("store_type", context.get("store_type")),
+            ("day_type", context.get("day_type")),
+            ("season", context.get("season")),
+            ("scenario", context.get("active_scenario_id"))
+        ]
+
+        # 事件类型到字段映射
+        event_field_map = {
+            "impression": "impressions",
+            "click": "clicks",
+            "add_to_cart": "add_to_carts",
+            "order": "orders"
+        }
+
+        field = event_field_map.get(event_type)
+        if not field:
+            return
+
+        for dim_type, dim_value in dimensions:
+            if dim_value:
+                # 使用 UPSERT 语法
+                await db.execute(
+                    f"""
+                    INSERT INTO context_metrics
+                    (date, dimension_type, dimension_value, {field}, experiment_id, variant)
+                    VALUES (?, ?, ?, 1, ?, ?)
+                    ON CONFLICT(date, dimension_type, dimension_value, experiment_id, variant)
+                    DO UPDATE SET {field} = {field} + 1
+                    """,
+                    (today, dim_type, dim_value, experiment_id or "", variant or "")
+                )
+
+    async def get_funnel_stats_async(
+        self,
+        start_date: str = None,
+        end_date: str = None,
+        experiment_id: str = None,
+        variant: str = None
+    ) -> dict:
+        """获取漏斗统计数据"""
+        db = await get_db()
+
+        where_clauses = []
+        params = []
+
+        if start_date:
+            where_clauses.append("timestamp >= ?")
+            params.append(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
+        if end_date:
+            where_clauses.append("timestamp <= ?")
+            params.append(datetime.strptime(end_date, "%Y-%m-%d").timestamp() + 86400)
+        if experiment_id:
+            where_clauses.append("experiment_id = ?")
+            params.append(experiment_id)
+        if variant:
+            where_clauses.append("variant = ?")
+            params.append(variant)
+
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+
+        # 获取各阶段统计
+        cursor = await db.execute(
+            f"""
+            SELECT event_type, COUNT(*) as count, COUNT(DISTINCT user_id) as unique_users
+            FROM conversion_events
+            WHERE {where_sql}
+            GROUP BY event_type
+            """,
+            params
+        )
+        rows = await cursor.fetchall()
+
+        stats = {event: {"count": 0, "unique_users": 0} for event in self.EVENT_TYPES}
+        for row in rows:
+            stats[row["event_type"]] = {
+                "count": row["count"],
+                "unique_users": row["unique_users"]
+            }
+
+        # 计算转化率
+        impressions = stats["impression"]["count"]
+        clicks = stats["click"]["count"]
+        add_to_carts = stats["add_to_cart"]["count"]
+        orders = stats["order"]["count"]
+
+        funnel = {
+            "impression": {
+                **stats["impression"],
+                "rate": 1.0
+            },
+            "click": {
+                **stats["click"],
+                "rate": round(clicks / impressions, 4) if impressions > 0 else 0
+            },
+            "add_to_cart": {
+                **stats["add_to_cart"],
+                "rate": round(add_to_carts / clicks, 4) if clicks > 0 else 0
+            },
+            "order": {
+                **stats["order"],
+                "rate": round(orders / add_to_carts, 4) if add_to_carts > 0 else 0
+            }
+        }
+
+        overall_conversion = round(orders / impressions, 4) if impressions > 0 else 0
+
+        return {
+            "funnel": funnel,
+            "overall_conversion_rate": overall_conversion,
+            "total_impressions": impressions,
+            "total_orders": orders
+        }
+
+    def get_funnel_stats(self, *args, **kwargs) -> dict:
+        """同步版本"""
+        return _run_async(self.get_funnel_stats_async(*args, **kwargs))
+
+    async def get_context_metrics_async(
+        self,
+        dimension_type: str,
+        start_date: str = None,
+        end_date: str = None
+    ) -> dict:
+        """获取上下文维度统计"""
+        db = await get_db()
+
+        where_clauses = ["dimension_type = ?"]
+        params = [dimension_type]
+
+        if start_date:
+            where_clauses.append("date >= ?")
+            params.append(start_date)
+        if end_date:
+            where_clauses.append("date <= ?")
+            params.append(end_date)
+
+        where_sql = " AND ".join(where_clauses)
+
+        cursor = await db.execute(
+            f"""
+            SELECT dimension_value,
+                   SUM(impressions) as impressions,
+                   SUM(clicks) as clicks,
+                   SUM(add_to_carts) as add_to_carts,
+                   SUM(orders) as orders,
+                   SUM(revenue) as revenue
+            FROM context_metrics
+            WHERE {where_sql}
+            GROUP BY dimension_value
+            ORDER BY SUM(orders) DESC
+            """,
+            params
+        )
+        rows = await cursor.fetchall()
+
+        metrics = []
+        for row in rows:
+            impressions = row["impressions"] or 0
+            orders = row["orders"] or 0
+            conversion_rate = round(orders / impressions, 4) if impressions > 0 else 0
+
+            metrics.append({
+                "dimension_value": row["dimension_value"],
+                "impressions": impressions,
+                "clicks": row["clicks"] or 0,
+                "add_to_carts": row["add_to_carts"] or 0,
+                "orders": orders,
+                "revenue": row["revenue"] or 0,
+                "conversion_rate": conversion_rate
+            })
+
+        return {
+            "dimension_type": dimension_type,
+            "metrics": metrics
+        }
+
+    def get_context_metrics(self, *args, **kwargs) -> dict:
+        """同步版本"""
+        return _run_async(self.get_context_metrics_async(*args, **kwargs))
+
+    async def get_ab_analysis_async(self, experiment_id: str) -> dict:
+        """获取A/B实验分析结果"""
+        db = await get_db()
+
+        # 获取各变体的统计数据
+        cursor = await db.execute(
+            """
+            SELECT variant,
+                   COUNT(*) as total_events,
+                   SUM(CASE WHEN event_type = 'impression' THEN 1 ELSE 0 END) as impressions,
+                   SUM(CASE WHEN event_type = 'click' THEN 1 ELSE 0 END) as clicks,
+                   SUM(CASE WHEN event_type = 'add_to_cart' THEN 1 ELSE 0 END) as add_to_carts,
+                   SUM(CASE WHEN event_type = 'order' THEN 1 ELSE 0 END) as orders
+            FROM conversion_events
+            WHERE experiment_id = ?
+            GROUP BY variant
+            """,
+            (experiment_id,)
+        )
+        rows = await cursor.fetchall()
+
+        if not rows:
+            return {
+                "experiment_id": experiment_id,
+                "status": "no_data",
+                "variants": [],
+                "winner": None
+            }
+
+        variants = []
+        for row in rows:
+            impressions = row["impressions"] or 0
+            orders = row["orders"] or 0
+            conversion_rate = round(orders / impressions, 4) if impressions > 0 else 0
+
+            variants.append({
+                "variant": row["variant"],
+                "impressions": impressions,
+                "clicks": row["clicks"] or 0,
+                "add_to_carts": row["add_to_carts"] or 0,
+                "orders": orders,
+                "conversion_rate": conversion_rate
+            })
+
+        # 找出最佳变体
+        variants.sort(key=lambda x: x["conversion_rate"], reverse=True)
+        winner = variants[0] if variants else None
+        baseline = variants[-1] if len(variants) > 1 else None
+
+        # 计算提升
+        lift = 0
+        if baseline and baseline["conversion_rate"] > 0:
+            lift = round(
+                (winner["conversion_rate"] - baseline["conversion_rate"]) / baseline["conversion_rate"],
+                4
+            )
+
+        # 模拟置信度计算（实际应使用卡方检验或贝叶斯方法）
+        total_samples = sum(v["impressions"] for v in variants)
+        confidence = min(0.99, 0.5 + (total_samples / 10000) * 0.4) if total_samples > 100 else 0.5
+        p_value = max(0.01, 1 - confidence)
+
+        return {
+            "experiment_id": experiment_id,
+            "status": "active",
+            "variants": variants,
+            "winner": winner["variant"] if winner else None,
+            "lift": lift,
+            "confidence": round(confidence, 2),
+            "p_value": round(p_value, 3),
+            "total_samples": total_samples,
+            "is_significant": confidence >= 0.95
+        }
+
+    def get_ab_analysis(self, experiment_id: str) -> dict:
+        """同步版本"""
+        return _run_async(self.get_ab_analysis_async(experiment_id))
+
+    async def simulate_data_async(
+        self,
+        days: int = 7,
+        events_per_day: int = 100
+    ) -> dict:
+        """模拟转化漏斗数据（用于演示）"""
+        import random
+        from datetime import timedelta
+
+        db = await get_db()
+        now = datetime.now()
+
+        time_of_days = ["morning", "lunch", "afternoon", "evening", "night"]
+        weather_types = ["hot", "rainy", "cold", "sunny", "cloudy"]
+        store_types = ["mall", "office", "station", "university"]
+        scenarios = ["office_morning_rush", "weekend_leisure", "student_study", "travel_rush"]
+        experiments = ["context_weight", "weather_adaptation"]
+        variants_map = {
+            "context_weight": ["low", "medium", "high"],
+            "weather_adaptation": ["none", "temperature_only", "full"]
+        }
+
+        total_events = 0
+
+        for day_offset in range(days):
+            event_date = now - timedelta(days=day_offset)
+
+            for _ in range(events_per_day):
+                user_id = f"user_{random.randint(1000, 9999)}"
+                session_id = f"session_{random.randint(10000, 99999)}"
+
+                # 随机上下文
+                context = {
+                    "time_of_day": random.choice(time_of_days),
+                    "weather": {"weather_type": random.choice(weather_types)},
+                    "store_type": random.choice(store_types),
+                    "day_type": "weekend" if event_date.weekday() >= 5 else "weekday",
+                    "active_scenario_id": random.choice(scenarios)
+                }
+
+                # 随机实验
+                exp_id = random.choice(experiments)
+                variant = random.choice(variants_map[exp_id])
+
+                # 模拟漏斗（转化率递减）
+                if random.random() < 0.95:  # 95% impression
+                    await self.record_event_async(
+                        user_id, session_id, "impression",
+                        item_sku=f"COF00{random.randint(1,5)}",
+                        experiment_id=exp_id, variant=variant, context=context
+                    )
+                    total_events += 1
+
+                    if random.random() < 0.45:  # 45% click
+                        await self.record_event_async(
+                            user_id, session_id, "click",
+                            item_sku=f"COF00{random.randint(1,5)}",
+                            experiment_id=exp_id, variant=variant, context=context
+                        )
+                        total_events += 1
+
+                        if random.random() < 0.35:  # 35% add to cart
+                            await self.record_event_async(
+                                user_id, session_id, "add_to_cart",
+                                item_sku=f"COF00{random.randint(1,5)}",
+                                experiment_id=exp_id, variant=variant, context=context
+                            )
+                            total_events += 1
+
+                            if random.random() < 0.70:  # 70% order
+                                await self.record_event_async(
+                                    user_id, session_id, "order",
+                                    item_sku=f"COF00{random.randint(1,5)}",
+                                    experiment_id=exp_id, variant=variant, context=context
+                                )
+                                total_events += 1
+
+        await db.commit()
+
+        return {
+            "status": "simulated",
+            "days": days,
+            "events_per_day": events_per_day,
+            "total_events": total_events
+        }
+
+    def simulate_data(self, *args, **kwargs) -> dict:
+        """同步版本"""
+        return _run_async(self.simulate_data_async(*args, **kwargs))
+
+
 # ============ 单例实例 ============
 
 ab_test_service = ABTestService()
@@ -2109,3 +2606,4 @@ behavior_service = BehaviorService()
 session_service = SessionService()
 explainability_service = ExplainabilityService()
 preset_service = PresetService()
+conversion_funnel_service = ConversionFunnelService()

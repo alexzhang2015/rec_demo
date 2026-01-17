@@ -46,16 +46,16 @@ class CartService:
             elif customization.cup_size == CupSize.TALL:
                 price -= 3
 
-            # 额外选项加价
-            if customization.extra_shot:
-                price += 4
+            # 额外浓缩加价 (默认2份，多于2份则加价)
+            if customization.espresso_shots > 2:
+                price += 4 * (customization.espresso_shots - 2)
 
             # 特殊奶类加价
             if customization.milk_type in [MilkType.OAT, MilkType.COCONUT]:
                 price += 3
 
-            # 糖浆加价
-            if customization.syrup:
+            # 无糖风味糖浆加价
+            if customization.sugar_free_flavor:
                 price += 3
 
         return price

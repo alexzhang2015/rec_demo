@@ -194,4 +194,99 @@ CREATE TABLE IF NOT EXISTS migration_status (
     source TEXT,
     status TEXT DEFAULT 'completed'
 );
+
+
+-- ============ 门店表 ============
+
+CREATE TABLE IF NOT EXISTS stores (
+    store_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    city TEXT NOT NULL,
+    district TEXT,
+    address TEXT,
+    store_type TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    opening_hours TEXT,
+    features TEXT,
+    busy_hours TEXT,
+    created_at REAL DEFAULT (unixepoch()),
+    updated_at REAL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_stores_city ON stores(city);
+CREATE INDEX IF NOT EXISTS idx_stores_type ON stores(store_type);
+
+CREATE TABLE IF NOT EXISTS store_inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    store_id TEXT NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
+    item_sku TEXT NOT NULL,
+    inventory_level TEXT DEFAULT 'high',
+    last_updated REAL DEFAULT (unixepoch()),
+    UNIQUE (store_id, item_sku)
+);
+
+CREATE INDEX IF NOT EXISTS idx_store_inventory_store ON store_inventory(store_id);
+
+
+-- ============ 转化漏斗事件表 ============
+
+CREATE TABLE IF NOT EXISTS conversion_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    item_sku TEXT,
+    store_id TEXT,
+    experiment_id TEXT,
+    variant TEXT,
+    context TEXT,
+    timestamp REAL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversion_user ON conversion_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversion_session ON conversion_events(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversion_event_type ON conversion_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_conversion_timestamp ON conversion_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_conversion_experiment ON conversion_events(experiment_id);
+
+
+-- ============ 上下文维度指标汇总表 ============
+
+CREATE TABLE IF NOT EXISTS context_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    dimension_type TEXT NOT NULL,
+    dimension_value TEXT NOT NULL,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    add_to_carts INTEGER DEFAULT 0,
+    orders INTEGER DEFAULT 0,
+    revenue REAL DEFAULT 0.0,
+    experiment_id TEXT,
+    variant TEXT,
+    UNIQUE (date, dimension_type, dimension_value, experiment_id, variant)
+);
+
+CREATE INDEX IF NOT EXISTS idx_context_metrics_date ON context_metrics(date);
+CREATE INDEX IF NOT EXISTS idx_context_metrics_dimension ON context_metrics(dimension_type, dimension_value);
+
+
+-- ============ A/B实验结果汇总表 ============
+
+CREATE TABLE IF NOT EXISTS experiment_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    experiment_id TEXT NOT NULL,
+    variant TEXT NOT NULL,
+    date TEXT NOT NULL,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    add_to_carts INTEGER DEFAULT 0,
+    orders INTEGER DEFAULT 0,
+    revenue REAL DEFAULT 0.0,
+    conversion_rate REAL DEFAULT 0.0,
+    UNIQUE (experiment_id, variant, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_experiment_results_exp ON experiment_results(experiment_id);
 """

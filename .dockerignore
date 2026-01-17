@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+.eggs/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 测试和文档
+tests/
+docs/
+*.md
+!README.md
+
+# 本地数据 (部署时会重新生成)
+app/data/*.json
+app/data/*.db
+
+# 日志
+*.log
+logs/
+
+# 环境变量文件
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Playwright
+.playwright-mcp/
+
+# 其他
+*.zip
+*.tar.gz

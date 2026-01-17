@@ -961,10 +961,10 @@ class EmbeddingRecommendationEngine:
                     session_id, item.tags, item.category.value, item.base_price
                 )
 
-            # 客制化偏好加权（仅 hybrid 变体启用）
+            # 客制化偏好加权 - 始终计算以便展示，但只在hybrid变体时应用到分数
             customization_multiplier = 1.0
             customization_boost_detail = None
-            if enable_behavior and rec_variant == "hybrid":
+            if enable_behavior:
                 # 获取商品客制化约束
                 item_constraints = None
                 if item.customization_constraints:
@@ -976,7 +976,9 @@ class EmbeddingRecommendationEngine:
                     [t.value for t in item.available_temperatures],
                     [s.value for s in item.available_sizes]
                 )
-                customization_multiplier = customization_boost_detail["total_boost"]
+                # 只在hybrid变体时将客制化因子应用到最终分数
+                if rec_variant == "hybrid":
+                    customization_multiplier = customization_boost_detail["total_boost"]
 
             # === 冷启动策略 ===
             cold_start_boost = 1.0
@@ -1076,7 +1078,8 @@ class EmbeddingRecommendationEngine:
                     item_constraints,
                     [t.value for t in item.available_temperatures],
                     [s.value for s in item.available_sizes],
-                    item.base_price
+                    item.base_price,
+                    None  # V1 API 不支持天气上下文
                 )
 
             # 生成推荐理由（融入客制化建议）
@@ -1424,6 +1427,508 @@ class EmbeddingRecommendationEngine:
                 "total_time_ms": round(total_time * 1000, 2),
                 "candidates_evaluated": len(candidates),
                 "final_recommendations": len(recommendations)
+            }
+        }
+
+    def recommend_v3(
+        self,
+        persona_type: str,
+        user_id: str = None,
+        session_id: str = None,
+        store_id: str = None,
+        custom_tags: list[str] = None,
+        context: dict = None,
+        weather_override: str = None,
+        scenario_override: str = None,
+        top_k: int = 6,
+        use_llm_for_reasons: bool = True,
+        enable_ab_test: bool = True,
+        enable_behavior: bool = True,
+        enable_session: bool = True,
+        enable_explainability: bool = True,
+        enable_context: bool = True
+    ) -> dict:
+        """
+        V3 MOP场景化推荐 - 集成完整上下文因子
+
+        新增特性:
+        - 门店选择与库存状态
+        - 天气适配推荐
+        - 场景化推荐
+        - 完整上下文因子可视化
+        """
+        start_time = time.time()
+        reasoning_steps = []
+        llm_calls = []
+
+        # 生成默认ID
+        user_id = user_id or f"user_{int(time.time())}"
+        session_id = session_id or f"session_{int(time.time())}"
+
+        # === 获取完整上下文 ===
+        full_context = context or {}
+        store_info = None
+        inventory_info = {}
+
+        if enable_context:
+            from app.context_service import context_service, store_service
+
+            # 获取完整上下文
+            ctx = context_service.get_current_context(
+                store_id=store_id,
+                weather_override=weather_override,
+                scenario_override=scenario_override
+            )
+
+            # 合并用户传入的上下文
+            full_context = {**ctx, **(context or {})}
+
+            # 获取门店信息
+            if store_id:
+                store_info = store_service.get_store(store_id)
+                inventory_info = store_service.get_store_inventory(store_id)
+
+        # === A/B测试分组 ===
+        experiment_info = {}
+        if enable_ab_test:
+            services = self.experiment_services
+            rec_variant = services["ab_test"].get_variant("rec_algorithm", user_id)
+            reason_variant = services["ab_test"].get_variant("reason_style", user_id)
+            context_variant = services["ab_test"].get_variant("context_weight", user_id)
+            weather_variant = services["ab_test"].get_variant("weather_adaptation", user_id)
+            experiment_info = {
+                "rec_algorithm": rec_variant,
+                "reason_style": reason_variant,
+                "context_weight": context_variant,
+                "weather_adaptation": weather_variant
+            }
+
+        # Step 1: 生成用户画像
+        step1_start = time.time()
+        services = self.experiment_services
+
+        customization_preference = None
+        if enable_behavior:
+            user_behavior_profile = services["behavior"].get_user_profile(user_id)
+            customization_preference = user_behavior_profile.get("customization_preference", {})
+
+        user_profile = self.llm_service.generate_user_profile(
+            persona_type, custom_tags, customization_preference
+        )
+
+        llm_calls.append({
+            "step": 1,
+            "type": "user_profile",
+            "model": user_profile.get("llm_model"),
+            "provider": user_profile.get("provider"),
+            "latency_ms": user_profile.get("processing_time_ms", 0)
+        })
+
+        reasoning_steps.append({
+            "step": 1,
+            "name": "用户画像生成",
+            "description": f"分析用户「{persona_type}」生成搜索query",
+            "input": {"persona_type": persona_type, "custom_tags": custom_tags},
+            "output": {
+                "search_query": user_profile.get("search_query", "")[:50],
+                "keywords": user_profile.get("keywords", [])[:5]
+            },
+            "duration_ms": round((time.time() - step1_start) * 1000, 2),
+            "model": user_profile.get("llm_model"),
+            "provider": user_profile.get("provider")
+        })
+
+        # Step 2: 用户向量化
+        step2_start = time.time()
+        user_embedding = self.vector_service.get_user_embedding(user_profile)
+        embedding_info = self.vector_service.embedding_service.get_info()
+
+        reasoning_steps.append({
+            "step": 2,
+            "name": "用户向量化",
+            "description": f"使用 {embedding_info['model']} 生成用户向量",
+            "input": {"query": user_profile.get("search_query", "")[:30] + "..."},
+            "output": {"vector_dim": len(user_embedding), "model": embedding_info["model"]},
+            "duration_ms": round((time.time() - step2_start) * 1000, 2),
+            "model": embedding_info["model"],
+            "provider": "openai"
+        })
+
+        # Step 3: 向量召回
+        step3_start = time.time()
+        candidates = []
+        for sku, item_embedding in self.vector_service.item_embeddings.items():
+            similarity = self.vector_service.calculate_similarity(user_embedding, item_embedding)
+            candidates.append({"sku": sku, "similarity": similarity})
+
+        candidates.sort(key=lambda x: x["similarity"], reverse=True)
+
+        reasoning_steps.append({
+            "step": 3,
+            "name": "语义向量召回",
+            "description": f"从{len(candidates)}个商品中计算语义相似度",
+            "input": {"total_items": len(candidates)},
+            "output": {
+                "top_candidates": [
+                    {"sku": c["sku"], "name": self.menu_items[c["sku"]].name, "score": round(c["similarity"], 4)}
+                    for c in candidates[:top_k]
+                ]
+            },
+            "duration_ms": round((time.time() - step3_start) * 1000, 2),
+            "model": "Cosine Similarity",
+            "provider": "numpy"
+        })
+
+        # Step 4: 多因素加权重排（含上下文因子）
+        step4_start = time.time()
+        reranked = []
+
+        # 上下文权重配置
+        context_weight_cap = 1.3  # 默认中等
+        if experiment_info.get("context_weight", {}).get("variant") == "low":
+            context_weight_cap = 1.1
+        elif experiment_info.get("context_weight", {}).get("variant") == "high":
+            context_weight_cap = 1.5
+
+        for candidate in candidates[:top_k * 2]:
+            item = self.menu_items[candidate["sku"]]
+            base_score = candidate["similarity"]
+
+            # 业务规则加权
+            rule_multiplier = 1.0
+            if item.is_new:
+                rule_multiplier *= 1.15
+            if item.is_seasonal:
+                rule_multiplier *= 1.1
+            if any(tag in user_profile.get("avoid_keywords", []) for tag in item.tags):
+                rule_multiplier *= 0.5
+
+            # === 上下文因子计算 ===
+            context_factors = {}
+            context_multiplier = 1.0
+
+            if enable_context and full_context:
+                from app.context_service import context_service
+
+                context_boost = context_service.calculate_context_boost(
+                    full_context,
+                    item.tags,
+                    item.category.value,
+                    [t.value for t in item.available_temperatures]
+                )
+
+                context_factors = context_boost["factors"]
+                context_multiplier = min(context_boost["total_factor"], context_weight_cap)
+
+            # === 库存因子 ===
+            inventory_factor = 1.0
+            inventory_level = None
+            if store_id and inventory_info:
+                from app.context_service import InventoryLevel
+                level = inventory_info.get(item.sku, InventoryLevel.MEDIUM)
+                inventory_level = level.value if hasattr(level, 'value') else level
+
+                if inventory_level == "out":
+                    inventory_factor = 0.0  # 售罄不推荐
+                elif inventory_level == "low":
+                    inventory_factor = 0.8  # 紧俏降权
+                elif inventory_level == "high":
+                    inventory_factor = 1.1  # 充足加权
+
+                context_factors["inventory_factor"] = {
+                    "value": round(inventory_factor, 2),
+                    "reason": f"库存{inventory_level}" if inventory_level else "标准库存"
+                }
+
+            # A/B测试算法分支
+            rec_variant = experiment_info.get("rec_algorithm", {}).get("variant", "hybrid")
+
+            # 历史行为加权
+            behavior_multiplier = 1.0
+            order_boost_detail = None
+            if enable_behavior and rec_variant in ["embedding_plus", "hybrid"]:
+                order_boost_detail = services["behavior"].get_order_based_recommendation_boost(
+                    user_id, item.sku, item.category.value, item.tags, item.base_price
+                )
+                behavior_multiplier = order_boost_detail["total_boost"]
+
+            # Session实时个性化加权
+            session_multiplier = 1.0
+            if enable_session and rec_variant == "hybrid":
+                session_multiplier = services["session"].get_session_boost(
+                    session_id, item.tags, item.category.value, item.base_price
+                )
+
+            # 客制化偏好加权 - 始终计算以便展示，但只在hybrid变体时应用到分数
+            customization_multiplier = 1.0
+            customization_boost_detail = None
+            if enable_behavior:
+                item_constraints = None
+                if item.customization_constraints:
+                    item_constraints = item.customization_constraints.model_dump()
+
+                customization_boost_detail = services["behavior"].get_customization_based_boost(
+                    user_id,
+                    item_constraints,
+                    [t.value for t in item.available_temperatures],
+                    [s.value for s in item.available_sizes]
+                )
+                # 只在hybrid变体时将客制化因子应用到最终分数
+                if rec_variant == "hybrid":
+                    customization_multiplier = customization_boost_detail["total_boost"]
+
+            # 冷启动策略
+            cold_start_boost = 1.0
+            is_cold_start = False
+            if enable_behavior:
+                user_behavior_profile = services["behavior"].get_user_profile(user_id)
+                if user_behavior_profile.get("is_new_user", True):
+                    is_cold_start = True
+                    if item.is_new:
+                        cold_start_boost *= 1.2
+                    if item.is_seasonal:
+                        cold_start_boost *= 1.15
+                    if "人气" in item.tags:
+                        cold_start_boost *= 1.15
+                    if "经典" in item.tags:
+                        cold_start_boost *= 1.1
+
+            # 综合得分（加入上下文因子和库存因子）
+            final_score = (
+                base_score *
+                rule_multiplier *
+                behavior_multiplier *
+                session_multiplier *
+                customization_multiplier *
+                cold_start_boost *
+                context_multiplier *
+                inventory_factor
+            )
+
+            # 计算匹配的关键词
+            user_keywords = set(user_profile.get("keywords", []))
+            item_keywords = set(item.tags)
+            matched_keywords = list(user_keywords & item_keywords)
+
+            reranked.append({
+                "sku": candidate["sku"],
+                "base_score": base_score,
+                "rule_multiplier": rule_multiplier,
+                "behavior_multiplier": behavior_multiplier,
+                "session_multiplier": session_multiplier,
+                "customization_multiplier": customization_multiplier,
+                "cold_start_boost": cold_start_boost,
+                "context_multiplier": context_multiplier,
+                "inventory_factor": inventory_factor,
+                "inventory_level": inventory_level,
+                "is_cold_start": is_cold_start,
+                "final_score": final_score,
+                "matched_keywords": matched_keywords,
+                "order_boost_detail": order_boost_detail,
+                "customization_boost_detail": customization_boost_detail,
+                "context_factors": context_factors,
+                "algorithm_variant": rec_variant
+            })
+
+        # 过滤售罄商品
+        reranked = [r for r in reranked if r["inventory_factor"] > 0]
+        reranked.sort(key=lambda x: x["final_score"], reverse=True)
+
+        reasoning_steps.append({
+            "step": 4,
+            "name": "多因素加权重排（含上下文）",
+            "description": "综合业务规则、历史行为、上下文因子、库存状态",
+            "input": {
+                "enable_behavior": enable_behavior,
+                "enable_session": enable_session,
+                "enable_context": enable_context,
+                "context_weight_cap": context_weight_cap
+            },
+            "output": {
+                "reranked_top": [
+                    {
+                        "sku": r["sku"],
+                        "name": self.menu_items[r["sku"]].name,
+                        "base": round(r["base_score"], 3),
+                        "context": round(r["context_multiplier"], 2),
+                        "inventory": r["inventory_level"],
+                        "final": round(r["final_score"], 3)
+                    }
+                    for r in reranked[:top_k]
+                ]
+            },
+            "duration_ms": round((time.time() - step4_start) * 1000, 2),
+            "model": "Multi-factor Reranking + Context",
+            "provider": "custom"
+        })
+
+        # Step 5: 生成推荐理由和解释
+        step5_start = time.time()
+        recommendations = []
+        reason_llm_calls = []
+
+        reason_style = "concise"
+        if experiment_info.get("reason_style", {}).get("variant") == "detailed":
+            reason_style = "detailed"
+
+        for i, ranked in enumerate(reranked[:top_k]):
+            item = self.menu_items[ranked["sku"]]
+            item_desc = self.vector_service.item_texts.get(ranked["sku"], {})
+
+            # 生成推荐客制化组合
+            suggested_customization = None
+            if enable_behavior:
+                item_constraints = None
+                if item.customization_constraints:
+                    item_constraints = item.customization_constraints.model_dump()
+
+                # 提取天气上下文用于客制化推荐
+                weather_context = full_context.get("weather") if enable_context else None
+
+                suggested_customization = services["behavior"].get_suggested_customization_for_item(
+                    user_id,
+                    item.sku,
+                    item_constraints,
+                    [t.value for t in item.available_temperatures],
+                    [s.value for s in item.available_sizes],
+                    item.base_price,
+                    weather_context  # 🆕 传递天气上下文
+                )
+
+            # 生成推荐理由
+            use_llm = use_llm_for_reasons and i < 3
+            reason_result = self.llm_service.generate_recommendation_reason(
+                item, user_profile, ranked["final_score"],
+                use_llm=use_llm,
+                suggested_customization=suggested_customization
+            )
+
+            if use_llm and reason_result.get("provider") != "local":
+                reason_llm_calls.append({
+                    "item": item.name,
+                    "model": reason_result.get("llm_model"),
+                    "latency_ms": reason_result.get("processing_time_ms", 0)
+                })
+
+            # 生成详细解释
+            explanation = None
+            if enable_explainability:
+                explanation = services["explainability"].generate_detailed_explanation(
+                    item={
+                        "sku": item.sku,
+                        "name": item.name,
+                        "is_new": item.is_new,
+                        "is_seasonal": item.is_seasonal,
+                        "tags": item.tags
+                    },
+                    user_profile=user_profile,
+                    match_score=ranked["final_score"],
+                    session_boost=ranked["session_multiplier"],
+                    behavior_boost=ranked["behavior_multiplier"],
+                    embedding_similarity=ranked["base_score"],
+                    matched_keywords=ranked["matched_keywords"],
+                    experiment_info=experiment_info
+                )
+
+            recommendations.append({
+                "item": {
+                    "sku": item.sku,
+                    "name": item.name,
+                    "english_name": item.english_name,
+                    "category": item.category.value,
+                    "base_price": item.base_price,
+                    "description": item.description,
+                    "calories": item.calories,
+                    "tags": item.tags,
+                    "is_new": item.is_new,
+                    "is_seasonal": item.is_seasonal,
+                    "available_temperatures": [t.value for t in item.available_temperatures],
+                    "available_sizes": [s.value for s in item.available_sizes],
+                    "customization_constraints": item.customization_constraints.model_dump() if item.customization_constraints else None
+                },
+                "match_score": round(ranked["final_score"], 4),
+                "base_score": round(ranked["base_score"], 4),
+                "score_breakdown": {
+                    "embedding_similarity": round(ranked["base_score"], 4),
+                    "rule_multiplier": round(ranked["rule_multiplier"], 2),
+                    "behavior_multiplier": round(ranked["behavior_multiplier"], 2),
+                    "session_multiplier": round(ranked["session_multiplier"], 2),
+                    "customization_multiplier": round(ranked["customization_multiplier"], 2),
+                    "cold_start_boost": round(ranked.get("cold_start_boost", 1.0), 2),
+                    "context_multiplier": round(ranked["context_multiplier"], 2),
+                    "inventory_factor": round(ranked["inventory_factor"], 2),
+                    "is_cold_start": ranked.get("is_cold_start", False),
+                    "algorithm_variant": ranked.get("algorithm_variant", "hybrid"),
+                    "context_factors": ranked.get("context_factors", {}),
+                    "order_boost_detail": ranked.get("order_boost_detail"),
+                    "customization_boost_detail": ranked.get("customization_boost_detail")
+                },
+                "inventory_level": ranked.get("inventory_level"),
+                "matched_keywords": ranked["matched_keywords"],
+                "reason": reason_result.get("reason", ""),
+                "reason_highlight": reason_result.get("highlight", ""),
+                "reason_confidence": reason_result.get("confidence", "medium"),
+                "semantic_description": item_desc.get("semantic_description", ""),
+                "llm_generated": reason_result.get("provider") != "local",
+                "explanation": explanation,
+                "suggested_customization": suggested_customization
+            })
+
+        llm_calls.extend([{"step": 5, "type": "reason", **c} for c in reason_llm_calls])
+
+        reasoning_steps.append({
+            "step": 5,
+            "name": "推荐理由与上下文解释生成",
+            "description": f"Top-{min(3, top_k)}使用LLM，含上下文因子解释",
+            "input": {"items_count": len(recommendations), "style": reason_style},
+            "output": {
+                "llm_reasons": len(reason_llm_calls),
+                "with_context_factors": enable_context
+            },
+            "duration_ms": round((time.time() - step5_start) * 1000, 2),
+            "model": "GPT-4o-mini",
+            "provider": "openai"
+        })
+
+        total_time = time.time() - start_time
+
+        return {
+            "user_id": user_id,
+            "session_id": session_id,
+            "store_id": store_id,
+            "user_profile": {
+                "persona_type": persona_type,
+                "description": user_profile.get("description", ""),
+                "keywords": user_profile.get("keywords", []),
+                "search_query": user_profile.get("search_query", ""),
+                "avoid_keywords": user_profile.get("avoid_keywords", []),
+                "custom_tags": custom_tags or []
+            },
+            "context": full_context,
+            "store": store_info,
+            "experiment": experiment_info,
+            "reasoning_steps": reasoning_steps,
+            "recommendations": recommendations,
+            "llm_info": {
+                "provider": self.llm_service.provider_info.get("provider"),
+                "model": self.llm_service.provider_info.get("model"),
+                "embedding_model": self.vector_service.embedding_service.model,
+                "calls": llm_calls,
+                "total_llm_calls": len(llm_calls)
+            },
+            "personalization": {
+                "behavior_enabled": enable_behavior,
+                "session_enabled": enable_session,
+                "ab_test_enabled": enable_ab_test,
+                "context_enabled": enable_context
+            },
+            "metrics": {
+                "total_time_ms": round(total_time * 1000, 2),
+                "candidates_evaluated": len(candidates),
+                "final_recommendations": len(recommendations),
+                "avg_match_score": round(
+                    sum(r["match_score"] for r in recommendations) / len(recommendations), 4
+                ) if recommendations else 0
             }
         }
 

@@ -184,9 +184,11 @@ class OrderItem(BaseModel):
         elif self.customization.cup_size == CupSize.TALL:
             price -= 3
         # 额外选项加价
-        if self.customization.extra_shot:
-            price += 4
+        if self.customization.espresso_shots > 2:
+            price += 4 * (self.customization.espresso_shots - 2)
         if self.customization.milk_type in [MilkType.OAT, MilkType.COCONUT]:
+            price += 3
+        if self.customization.sugar_free_flavor:
             price += 3
         return price * self.quantity
 

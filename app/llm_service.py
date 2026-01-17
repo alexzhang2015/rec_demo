@@ -40,7 +40,8 @@ class OpenAIProvider(LLMProvider):
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY not set")
 
-        self.client = OpenAI(api_key=self.api_key)
+        base_url = os.getenv("OPENAI_BASE_URL")
+        self.client = OpenAI(api_key=self.api_key, base_url=base_url) if base_url else OpenAI(api_key=self.api_key)
         self.model = model
 
     def generate(self, prompt: str, system_prompt: str = None) -> dict:
@@ -284,7 +285,8 @@ class OpenAIEmbeddingService:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY not set")
 
-        self.client = OpenAI(api_key=self.api_key)
+        base_url = os.getenv("OPENAI_BASE_URL")
+        self.client = OpenAI(api_key=self.api_key, base_url=base_url) if base_url else OpenAI(api_key=self.api_key)
         self.model = "text-embedding-3-small"
         self.dimension = 1536  # text-embedding-3-small 的维度
 

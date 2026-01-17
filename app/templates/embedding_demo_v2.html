@@ -154,19 +154,85 @@
         .experiment-banner {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 14px 16px;
-            border-radius: 10px;
+            padding: 16px;
+            border-radius: 12px;
             margin-bottom: 16px;
             font-size: 13px;
         }
 
-        .experiment-banner .title { font-weight: 600; margin-bottom: 6px; }
-        .experiment-banner .variants { display: flex; gap: 12px; flex-wrap: wrap; }
+        .experiment-banner .title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .experiment-banner .title::before {
+            content: '🧪';
+        }
+        .experiment-banner .variants {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
         .experiment-banner .variant-tag {
-            background: rgba(255,255,255,0.2);
-            padding: 4px 10px;
-            border-radius: 12px;
+            background: rgba(255,255,255,0.15);
+            padding: 10px 12px;
+            border-radius: 10px;
             font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .experiment-banner .variant-tag:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-1px);
+        }
+        .experiment-banner .variant-tag.treatment {
+            background: rgba(34, 197, 94, 0.3);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+        .experiment-banner .variant-tag .exp-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .experiment-banner .variant-tag .exp-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .experiment-banner .variant-tag .exp-variant {
+            background: rgba(255,255,255,0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .experiment-banner .variant-tag.treatment .exp-variant {
+            background: rgba(34, 197, 94, 0.5);
+        }
+        .experiment-banner .variant-tag .exp-desc {
+            font-size: 11px;
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+        .experiment-banner .variant-tag .exp-impact {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(255,255,255,0.2);
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .experiment-banner .variant-tag .exp-impact.positive {
+            color: #86efac;
+        }
+        .experiment-banner .variant-tag .exp-impact.neutral {
+            color: #fde68a;
         }
 
         .recommendations-grid {
@@ -182,9 +248,14 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             position: relative;
             transition: all 0.2s;
+            border: 2px dashed #d1d5db;
         }
 
-        .rec-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .rec-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border-color: #00704a;
+        }
 
         .rec-card-header {
             display: flex;
@@ -302,6 +373,95 @@
 
         .pref-tag.liked { background: #dcfce7; color: #166534; }
         .pref-tag.disliked { background: #fee2e2; color: #991b1b; }
+        .pref-tag.new { animation: tagPulse 0.5s ease; }
+        @keyframes tagPulse {
+            0% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .tag-count { font-size: 10px; color: #999; font-weight: normal; }
+
+        /* 活动日志 */
+        .activity-log-section {
+            margin-top: 12px;
+            padding: 10px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+            border-radius: 8px;
+            border: 1px solid #bbf7d0;
+        }
+        .activity-log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .activity-log-header .label { font-size: 12px; font-weight: 600; color: #166534; }
+        .btn-demo-interactions {
+            padding: 4px 8px;
+            font-size: 10px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-demo-interactions:hover { background: #059669; transform: scale(1.05); }
+        .activity-log {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        .activity-empty { color: #888; text-align: center; padding: 10px; }
+        .activity-item {
+            padding: 4px 6px;
+            margin-bottom: 4px;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-10px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .activity-item .time { color: #999; font-size: 10px; flex-shrink: 0; }
+        .activity-item .action { flex: 1; }
+        .activity-item.like { border-left: 3px solid #22c55e; }
+        .activity-item.dislike { border-left: 3px solid #ef4444; }
+        .activity-item.cart { border-left: 3px solid #3b82f6; }
+        .activity-item.click { border-left: 3px solid #f59e0b; }
+        .activity-item.context { border-left: 3px solid #8b5cf6; }
+
+        /* 上下文因子迷你展示 */
+        .context-realtime-section {
+            margin-top: 12px;
+            padding: 10px;
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+            border-radius: 8px;
+            border: 1px solid #c4b5fd;
+        }
+        .context-realtime-section .label { font-size: 12px; font-weight: 600; color: #6d28d9; margin-bottom: 8px; }
+        .context-factors-mini {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .context-factor-mini {
+            padding: 6px 8px;
+            background: white;
+            border-radius: 6px;
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .context-factor-mini .name { color: #666; }
+        .context-factor-mini .value { font-weight: 600; }
+        .context-factor-mini .value.boost { color: #16a34a; }
+        .context-factor-mini .value.neutral { color: #666; }
+        .context-factor-mini .value.reduce { color: #dc2626; }
 
         .explanation-panel {
             margin-top: 16px;
@@ -878,9 +1038,32 @@
 
         .cust-prefs-panel .title {
             font-weight: 600;
-            color: #0d9488;
+            color: #047857;
             margin-bottom: 8px;
             font-size: 13px;
+        }
+
+        .cust-prefs-panel .pref-section {
+            margin-bottom: 10px;
+        }
+
+        .cust-prefs-panel .pref-section .label {
+            font-size: 11px;
+            color: #047857;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .cust-prefs-panel .pref-section .pref-value {
+            font-size: 12px;
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .cust-prefs-panel .pref-section .pref-value.empty {
+            color: #6b7280;
+            font-weight: normal;
+            font-style: italic;
         }
 
         .cust-pref-item {
@@ -890,7 +1073,7 @@
             font-size: 11px;
         }
 
-        .cust-pref-item .label { color: #5eead4; font-weight: 500; }
+        .cust-pref-item .label { color: #047857; font-weight: 500; }
         .cust-pref-item .value { color: #0d9488; font-weight: 600; }
 
         /* 自定义偏好输入 */
@@ -1261,12 +1444,1435 @@
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100px); opacity: 0; }
         }
+
+        /* ============ 增强可视化样式 ============ */
+
+        /* 推荐流程Pipeline可视化 */
+        .pipeline-section {
+            background: linear-gradient(135deg, #1e3932 0%, #00704a 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            color: white;
+        }
+
+        .pipeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .pipeline-title {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pipeline-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .pipeline-toggle:hover { background: rgba(255,255,255,0.3); }
+
+        .pipeline-steps {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            overflow-x: auto;
+            overflow-y: visible;
+            padding-bottom: 10px;
+            padding-top: 12px;
+            margin-top: -8px;
+        }
+
+        .pipeline-step {
+            flex: 1;
+            min-width: 180px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .pipeline-step.active {
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.02);
+        }
+
+        .pipeline-step.completed {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .pipeline-step-number {
+            position: absolute;
+            top: -12px;
+            left: -6px;
+            min-width: 32px;
+            height: 24px;
+            padding: 0 8px;
+            background: white;
+            color: var(--starbucks-green);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        .pipeline-step.completed .pipeline-step-number {
+            background: #22c55e;
+            color: white;
+        }
+
+        .pipeline-step-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .pipeline-step-desc {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .pipeline-step-output {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 10px;
+            font-family: monospace;
+            max-height: 60px;
+            overflow: hidden;
+        }
+
+        .pipeline-step-time {
+            margin-top: 8px;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .pipeline-arrow {
+            color: rgba(255,255,255,0.5);
+            font-size: 20px;
+            flex-shrink: 0;
+            margin-top: 30px;
+        }
+
+        /* Pipeline步骤可点击 */
+        .pipeline-step.clickable {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .pipeline-step.clickable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .pipeline-step.clickable:hover .step-hint {
+            opacity: 1;
+        }
+        .step-hint {
+            margin-top: 8px;
+            font-size: 9px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* 两阶段Pipeline布局 */
+        .pipeline-phase {
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .phase-badge {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .phase-badge.cust {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .phase-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .phase-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            flex: 1;
+        }
+
+        .phase-time {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            background: rgba(0,0,0,0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .phase-output {
+            margin-top: 16px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .phase-output.cust {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        .phase-output .output-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #22c55e;
+        }
+
+        .phase-output.cust .output-label {
+            color: #a78bfa;
+        }
+
+        .phase-output .output-content {
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+        }
+
+        /* 阶段连接器 */
+        .phase-connector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 0;
+            margin: -8px 0;
+        }
+
+        .connector-line {
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+        }
+
+        .connector-icon {
+            font-size: 24px;
+            animation: bounceDown 1.5s infinite;
+        }
+
+        .connector-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            background: rgba(0,0,0,0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        @keyframes bounceDown {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(4px); }
+        }
+
+        /* 客制化阶段的特殊样式 */
+        .pipeline-phase.phase-customization {
+            border-color: rgba(139, 92, 246, 0.3);
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .pipeline-step.cust-step {
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .pipeline-step.cust-step.active {
+            background: rgba(139, 92, 246, 0.35);
+        }
+
+        .pipeline-step.cust-step.completed {
+            background: rgba(139, 92, 246, 0.4);
+            border-color: rgba(139, 92, 246, 0.6);
+        }
+
+        .pipeline-step.cust-step .pipeline-step-number {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .pipeline-step.cust-step.completed .pipeline-step-number {
+            background: #a78bfa;
+        }
+
+        .pipeline-arrow.cust {
+            color: rgba(167, 139, 250, 0.6);
+        }
+
+        /* 算法详情弹窗 */
+        .algorithm-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .algorithm-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .algorithm-modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .algorithm-modal-overlay.show .algorithm-modal {
+            transform: scale(1);
+        }
+        .algorithm-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #00754a 0%, #1e3932 100%);
+            border-radius: 16px 16px 0 0;
+        }
+        .algorithm-modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+        .algorithm-modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .algorithm-modal-close:hover { background: rgba(255,255,255,0.3); }
+        .algorithm-modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .algorithm-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+            border-radius: 0 0 16px 16px;
+        }
+        .algorithm-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-nav {
+            padding: 10px 20px;
+            background: #00754a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-nav:hover:not(:disabled) { background: #005a38; }
+        .btn-nav:disabled { background: #ccc; cursor: not-allowed; }
+        .step-indicator {
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        /* 弹窗内容样式 */
+        .detail-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 12px;
+        }
+        .detail-section.highlight {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 1px solid #a7f3d0;
+        }
+        .detail-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #1f2937;
+        }
+        .detail-section p { margin: 0 0 8px 0; color: #4b5563; line-height: 1.6; }
+        .detail-section ul { margin: 8px 0; padding-left: 20px; }
+        .detail-section li { margin: 6px 0; color: #4b5563; }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+        }
+
+        .flow-diagram { display: flex; flex-direction: column; gap: 12px; }
+        .flow-step {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #00754a;
+        }
+        .flow-num {
+            width: 28px;
+            height: 28px;
+            background: #00754a;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .flow-content { flex: 1; }
+        .flow-content strong { color: #1f2937; }
+        .flow-content p { margin: 4px 0 0 0; font-size: 13px; }
+        .flow-content ul { margin: 8px 0 0 0; font-size: 12px; }
+
+        .concept-card {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .concept-title { font-weight: 700; color: #00754a; margin-bottom: 8px; }
+        .vector-visual { margin-top: 12px; }
+        .vector-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+        .vector-item .text { color: #0369a1; font-weight: 600; min-width: 100px; }
+        .vector-item .arrow { color: #94a3b8; }
+        .vector-item .vector { color: #64748b; font-family: monospace; font-size: 11px; }
+        .similarity { text-align: center; padding: 8px; color: #16a34a; font-weight: 600; }
+
+        .tech-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .tech-item { background: white; padding: 12px; border-radius: 8px; text-align: center; }
+        .tech-name { font-size: 11px; color: #888; margin-bottom: 4px; }
+        .tech-value { font-weight: 700; color: #1f2937; font-size: 13px; }
+
+        .cache-diagram { background: white; padding: 12px; border-radius: 8px; }
+        .cache-item {
+            display: grid;
+            grid-template-columns: 60px 80px 1fr 100px;
+            gap: 8px;
+            padding: 8px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 11px;
+        }
+        .cache-item .sku { color: #00754a; font-weight: 600; }
+        .cache-item .name { color: #1f2937; }
+        .cache-item .desc { color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cache-item .vector { color: #94a3b8; font-family: monospace; }
+        .cache-info { text-align: center; padding: 8px; color: #888; font-size: 11px; }
+
+        .formula-card { background: white; padding: 20px; border-radius: 12px; text-align: center; }
+        .formula-card.large .formula { font-size: 14px; }
+        .formula {
+            font-family: 'Monaco', monospace;
+            font-size: 16px;
+            color: #0369a1;
+            padding: 16px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .formula-explain { text-align: left; font-size: 13px; }
+        .formula-explain p { margin: 4px 0; }
+
+        .retrieval-flow { display: flex; gap: 16px; }
+        .retrieval-step {
+            flex: 1;
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .retrieval-step .step-icon { font-size: 24px; margin-bottom: 8px; }
+        .retrieval-step strong { display: block; color: #1f2937; margin-bottom: 4px; }
+        .retrieval-step p { font-size: 12px; color: #64748b; margin: 0; }
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .result-table th, .result-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .result-table th { background: #f8fafc; font-weight: 600; color: #374151; }
+        .result-table .match { color: #16a34a; }
+        .result-table .weak { color: #d97706; }
+
+        .factor-detail {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .factor-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .factor-icon { font-size: 18px; }
+        .factor-name { font-weight: 600; color: #1f2937; }
+        .factor-body { padding: 12px 16px; }
+        .factor-body p { margin: 0 0 8px 0; font-size: 13px; }
+        .factor-body ul { margin: 0; padding-left: 18px; font-size: 12px; }
+        .factor-body .example { background: #fef3c7; padding: 8px 12px; border-radius: 6px; font-size: 12px; color: #92400e; }
+
+        .mini-table {
+            width: 100%;
+            font-size: 12px;
+        }
+        .mini-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .mini-table td:first-child { font-weight: 600; width: 80px; }
+
+        .rerank-example { background: white; padding: 12px; border-radius: 8px; }
+        .rerank-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 12px;
+        }
+        .rerank-item.boosted { background: #f0fdf4; }
+        .rerank-item .rank { font-weight: 700; color: #666; width: 50px; }
+        .rerank-item .name { width: 80px; color: #1f2937; }
+        .rerank-item .calc { flex: 1; color: #64748b; font-family: monospace; }
+        .rerank-item .calc strong { color: #16a34a; }
+
+        .llm-flow { display: flex; flex-direction: column; gap: 8px; }
+        .llm-step { background: white; padding: 12px; border-radius: 8px; }
+        .llm-step .step-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .llm-arrow {
+            text-align: center;
+            color: #00754a;
+            font-weight: 700;
+            padding: 4px;
+        }
+        .reason-output {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #92400e;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .explainability-card { background: white; padding: 16px; border-radius: 8px; }
+        .explain-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .explain-label { width: 80px; font-size: 12px; color: #666; }
+        .explain-bar {
+            flex: 1;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .explain-bar .bar-fill { height: 100%; background: #00754a; border-radius: 4px; }
+        .explain-value { width: 40px; font-weight: 700; color: #1f2937; font-size: 12px; }
+
+        .style-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .style-table th, .style-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .style-table th { background: #f8fafc; }
+        .style-table td:first-child { font-weight: 600; width: 80px; }
+        .style-table td:nth-child(2) { color: #0369a1; font-style: italic; }
+        .style-table td:nth-child(3) { color: #888; font-size: 11px; }
+
+        /* 客制化算法可视化组件 */
+        .algorithm-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .algorithm-card .algo-title {
+            font-weight: 700;
+            color: #0369a1;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .algorithm-card .algo-formula {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #1e3a5f;
+            margin-bottom: 12px;
+        }
+        .algorithm-card .algo-examples {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .algorithm-card .example-item {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .algorithm-card .example-item .attr {
+            font-weight: 600;
+            color: #0369a1;
+        }
+        .algorithm-card .example-item .calc {
+            font-size: 11px;
+            color: #64748b;
+            font-family: monospace;
+        }
+        .algorithm-card .example-item .score {
+            font-weight: 700;
+            color: #22c55e;
+        }
+
+        /* 库存检查组件 */
+        .inventory-check {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .inventory-check .inv-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        .inventory-check .inv-item.available {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .inventory-check .inv-item.available .icon { color: #22c55e; }
+        .inventory-check .inv-item.low {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+        }
+        .inventory-check .inv-item.low .icon { color: #f59e0b; }
+        .inventory-check .inv-item.out {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .inventory-check .inv-item.out .icon { color: #ef4444; }
+        .inventory-check .inv-item .name {
+            font-weight: 600;
+            min-width: 80px;
+        }
+        .inventory-check .inv-item .status {
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        /* 增强分数拆解可视化 */
+        .score-breakdown-enhanced {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        .score-progress-item {
+            margin-bottom: 12px;
+        }
+
+        .score-progress-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .score-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .score-progress-label {
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .score-progress-value {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .score-progress-value.boost { color: #16a34a; }
+        .score-progress-value.penalty { color: #dc2626; }
+        .score-progress-value.neutral { color: #64748b; }
+
+        .score-progress-bar {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .score-progress-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+
+        .score-progress-fill.similarity { background: linear-gradient(90deg, #00704a 0%, #1e3932 100%); }
+        .score-progress-fill.rule { background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%); }
+        .score-progress-fill.behavior { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+        .score-progress-fill.session { background: linear-gradient(90deg, #8b5cf6 0%, #6d28d9 100%); }
+        .score-progress-fill.customization { background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%); }
+
+        .score-final {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .score-final-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .score-final-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--starbucks-green);
+        }
+
+        /* 客制化因素展开面板 */
+        .customization-factors {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            border-radius: 10px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .customization-factors-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .customization-factors-header:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .customization-factors-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #0369a1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .customization-factors-toggle {
+            font-size: 10px;
+            color: #0369a1;
+            transition: transform 0.2s;
+        }
+
+        .customization-factors-content {
+            padding: 0 12px 12px;
+            display: none;
+        }
+
+        .customization-factors.expanded .customization-factors-content {
+            display: block;
+        }
+
+        .customization-factors.expanded .customization-factors-toggle {
+            transform: rotate(180deg);
+        }
+
+        .cust-factor-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+
+        .cust-factor-item:last-child {
+            border-bottom: none;
+        }
+
+        .cust-factor-icon {
+            font-size: 16px;
+            width: 24px;
+            flex-shrink: 0;
+        }
+
+        .cust-factor-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cust-factor-name {
+            font-size: 12px;
+            color: #334155;
+            font-weight: 500;
+        }
+
+        .cust-factor-desc {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .cust-factor-bar {
+            width: 60px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 8px;
+        }
+
+        .cust-factor-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .cust-factor-bar-fill.positive { background: #22c55e; }
+        .cust-factor-bar-fill.negative { background: #ef4444; }
+        .cust-factor-bar-fill.neutral { background: #94a3b8; }
+
+        .cust-factor-value {
+            font-size: 12px;
+            font-weight: 700;
+            width: 50px;
+            text-align: right;
+        }
+
+        .cust-factor-value.positive { color: #16a34a; }
+        .cust-factor-value.negative { color: #dc2626; }
+        .cust-factor-value.neutral { color: #64748b; }
+
+        /* 客制化建议卡片增强 */
+        .customization-suggestion-card {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 2px solid #86efac;
+            border-radius: 12px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        .suggestion-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .suggestion-card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #166534;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .suggestion-confidence {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .suggestion-confidence.high { background: #22c55e; color: white; }
+        .suggestion-confidence.medium { background: #f59e0b; color: white; }
+        .suggestion-confidence.low { background: #94a3b8; color: white; }
+
+        .suggestion-items {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .suggestion-item-icon {
+            font-size: 18px;
+        }
+
+        .suggestion-item-info {
+            flex: 1;
+        }
+
+        .suggestion-item-label {
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        .suggestion-item-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .weather-factor-indicator {
+            font-size: 10px;
+            cursor: help;
+            animation: pulse-weather 2s infinite;
+        }
+
+        @keyframes pulse-weather {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .suggestion-item-reason {
+            font-size: 9px;
+            color: #22c55e;
+            margin-top: 2px;
+        }
+
+        .suggestion-price {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #86efac;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .suggestion-price-label {
+            font-size: 12px;
+            color: #166534;
+        }
+
+        .suggestion-price-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #166534;
+        }
+
+        .suggestion-price-adjust {
+            font-size: 11px;
+            color: #22c55e;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-add-suggested {
+            flex: 1;
+            padding: 10px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-add-suggested:hover { background: #15803d; }
+
+        .btn-customize {
+            padding: 10px 16px;
+            background: white;
+            color: #166534;
+            border: 2px solid #86efac;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-customize:hover { background: #f0fdf4; }
+
+        /* 算法洞察徽章 */
+        .algo-insight-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .algo-insight-badge.new-item { background: #fef3c7; color: #92400e; }
+        .algo-insight-badge.seasonal { background: #fce7f3; color: #9d174d; }
+        .algo-insight-badge.repurchase { background: #dbeafe; color: #1e40af; }
+        .algo-insight-badge.cold-start { background: #e0e7ff; color: #3730a3; }
+
+        /* MOP门店与上下文样式 */
+        .mop-section {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .mop-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #22c55e;
+            border-radius: 8px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .store-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .busy-indicator { font-weight: 600; }
+        .busy-indicator.low { color: #22c55e; }
+        .busy-indicator.medium { color: #f59e0b; }
+        .busy-indicator.high { color: #ef4444; }
+
+        .wait-time { color: #666; }
+
+        .context-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .context-col { }
+
+        .time-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .time-pill {
+            padding: 6px 10px;
+            border: 1px solid #22c55e;
+            background: white;
+            border-radius: 16px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-pill:hover { background: #dcfce7; }
+        .time-pill.active {
+            background: #22c55e;
+            color: white;
+            font-weight: 600;
+        }
+
+        .weather-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+        .weather-display .weather-icon { font-size: 20px; }
+        .weather-display .temp { font-weight: 600; color: #333; }
+
+        .weather-select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 11px;
+            background: white;
+        }
+
+        .scenario-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .scenario-card {
+            padding: 10px 8px;
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .scenario-card:hover { border-color: #22c55e; transform: translateY(-1px); }
+        .scenario-card.active {
+            border-color: #22c55e;
+            background: #dcfce7;
+        }
+
+        .scenario-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        .scenario-name { font-size: 11px; color: #333; font-weight: 500; }
+
+        /* 上下文因子面板 */
+        .context-factors-panel {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .context-factors-panel .title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 10px;
+        }
+
+        .context-factor-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .context-factor-row:last-child { border-bottom: none; }
+
+        .context-factor-row .factor-icon { font-size: 14px; width: 20px; }
+        .context-factor-row .factor-name { flex: 1; font-size: 12px; color: #333; }
+        .context-factor-row .factor-bar {
+            width: 60px;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .context-factor-row .factor-bar-fill {
+            height: 100%;
+            background: #22c55e;
+            border-radius: 3px;
+        }
+        .context-factor-row .factor-value {
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: right;
+        }
+        .context-factor-row .factor-value.boost { color: #22c55e; }
+        .context-factor-row .factor-value.penalty { color: #ef4444; }
+
+        /* 库存标签 */
+        .stock-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .stock-badge.high { background: #dcfce7; color: #166534; }
+        .stock-badge.medium { background: #fef3c7; color: #92400e; }
+        .stock-badge.low { background: #fee2e2; color: #991b1b; }
+        .stock-badge.out { background: #e5e7eb; color: #6b7280; }
+
+        /* 转化漏斗 */
+        .conversion-funnel {
+            background: white;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 16px;
+        }
+
+        .conversion-funnel .title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .funnel-stages {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .funnel-stage {
+            text-align: center;
+            padding: 8px 12px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            min-width: 60px;
+        }
+
+        .funnel-stage.highlight {
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+        }
+
+        .funnel-stage .name { font-size: 10px; color: #666; display: block; }
+        .funnel-stage .count { font-size: 14px; font-weight: 700; color: #333; }
+
+        .funnel-arrow {
+            font-size: 10px;
+            color: #9ca3af;
+            padding: 0 2px;
+        }
+
+        .total-rate {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .total-rate strong { color: #22c55e; }
+
+        /* A/B实验结果 */
+        .ab-results {
+            background: white;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 16px;
+        }
+
+        .ab-results .title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .ab-experiment {
+            margin-bottom: 12px;
+        }
+
+        .ab-experiment .exp-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .ab-variants {
+            display: flex;
+            gap: 8px;
+        }
+
+        .ab-variant {
+            flex: 1;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .ab-variant.winner {
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+        }
+
+        .ab-variant .name { font-size: 11px; color: #666; display: block; }
+        .ab-variant .rate { font-size: 14px; font-weight: 700; color: #333; display: block; }
+        .ab-variant .lift { font-size: 10px; color: #22c55e; font-weight: 600; }
+
+        .confidence-info {
+            margin-top: 8px;
+            font-size: 10px;
+            color: #9ca3af;
+        }
+
+        /* 上下文转化分析 */
+        .context-analysis {
+            background: white;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 16px;
+        }
+
+        .context-analysis .title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .context-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 80px;
+        }
+
+        .context-bar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .context-bar .bar {
+            width: 100%;
+            background: #22c55e;
+            border-radius: 4px 4px 0 0;
+            min-height: 10px;
+        }
+
+        .context-bar .label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .context-bar .value {
+            font-size: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
     </style>
 </head>
 <body>
     <header class="demo-header">
-        <h1>智能推荐系统 V2</h1>
-        <p>A/B测试 | 用户行为 | Session个性化 | 客制化推荐 | 解释性增强</p>
+        <h1>智能推荐系统 V3 MOP</h1>
+        <p>门店选择 | 上下文感知 | A/B测试 | 个性化推荐 | 转化漏斗</p>
         <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px;">
             <span class="badge">OpenAI Embedding + GPT-4o-mini</span>
             <a href="/presentation" class="badge" style="text-decoration: none; background: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.3)'">
@@ -1310,9 +2916,82 @@
                 </div>
             </div>
 
+            <!-- MOP门店选择 -->
+            <div class="form-group mop-section">
+                <label class="form-label">📍 选择取餐门店</label>
+                <select id="storeSelect" class="mop-select">
+                    <option value="">自动定位最近门店</option>
+                </select>
+                <div class="store-info" id="storeInfo" style="display: none;">
+                    <span class="busy-indicator" id="busyIndicator">🟢 空闲</span>
+                    <span class="wait-time" id="waitTime">预计等待 3-5 分钟</span>
+                </div>
+            </div>
+
+            <!-- 时段与天气 -->
+            <div class="form-group mop-section">
+                <div class="context-row">
+                    <div class="context-col">
+                        <label class="form-label">⏰ 时段</label>
+                        <div class="time-pills" id="timePills">
+                            <button class="time-pill active" data-time="auto">自动</button>
+                            <button class="time-pill" data-time="morning">☀️ 早</button>
+                            <button class="time-pill" data-time="lunch">🍽️ 午</button>
+                            <button class="time-pill" data-time="afternoon">☕ 下午</button>
+                            <button class="time-pill" data-time="evening">🌙 晚</button>
+                        </div>
+                    </div>
+                    <div class="context-col">
+                        <label class="form-label">🌤️ 天气</label>
+                        <div class="weather-display" id="weatherDisplay">
+                            <span class="weather-icon">☀️</span>
+                            <span class="temp">25°C</span>
+                        </div>
+                        <select id="weatherSelect" class="weather-select">
+                            <option value="auto">实时天气</option>
+                            <option value="hot">☀️ 炎热 32°C</option>
+                            <option value="rainy">🌧️ 雨天 22°C</option>
+                            <option value="cold">❄️ 寒冷 5°C</option>
+                            <option value="sunny">🌤️ 晴朗 25°C</option>
+                            <option value="cloudy">☁️ 多云 20°C</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速场景 -->
+            <div class="form-group mop-section">
+                <label class="form-label">🎯 快速场景</label>
+                <div class="scenario-cards" id="scenarioCards">
+                    <div class="scenario-card" data-scenario="office_morning_rush">
+                        <span class="scenario-icon">🏢</span>
+                        <span class="scenario-name">上班早高峰</span>
+                    </div>
+                    <div class="scenario-card" data-scenario="weekend_leisure">
+                        <span class="scenario-icon">🛍️</span>
+                        <span class="scenario-name">周末休闲</span>
+                    </div>
+                    <div class="scenario-card" data-scenario="student_study">
+                        <span class="scenario-icon">📚</span>
+                        <span class="scenario-name">学习充电</span>
+                    </div>
+                    <div class="scenario-card" data-scenario="summer_cool">
+                        <span class="scenario-icon">🧊</span>
+                        <span class="scenario-name">夏日清凉</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label class="form-label">功能开关</label>
                 <div class="toggle-group">
+                    <div class="toggle-item" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);">
+                        <label style="color: #059669; font-weight: 600;">🌍 上下文感知</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableContext" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
                     <div class="toggle-item">
                         <label>A/B测试</label>
                         <div class="toggle-switch">
@@ -1446,6 +3125,116 @@
                 </div>
             </div>
 
+            <!-- 推荐流程Pipeline可视化 - 两阶段架构 -->
+            <div id="pipelineSection" class="pipeline-section" style="display: none;">
+                <div class="pipeline-header">
+                    <div class="pipeline-title">
+                        🔄 推荐算法执行流程
+                    </div>
+                    <button class="pipeline-toggle" onclick="togglePipeline()">收起</button>
+                </div>
+
+                <!-- 阶段一：千店千面商品推荐 -->
+                <div class="pipeline-phase" id="phase1">
+                    <div class="phase-header">
+                        <div class="phase-badge">阶段 1</div>
+                        <div class="phase-title">🏪 千店千面 · 商品推荐</div>
+                        <div class="phase-desc">基于门店SPU/SKU的个性化商品匹配</div>
+                        <div class="phase-time" id="phase1Time">-</div>
+                    </div>
+                    <div class="pipeline-steps" id="pipelineSteps">
+                        <div class="pipeline-step clickable" id="step1" onclick="showAlgorithmDetail(1)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">1.1</div>
+                            <div class="pipeline-step-title">👤 用户画像</div>
+                            <div class="pipeline-step-desc">Persona → 搜索Query</div>
+                            <div class="pipeline-step-output" id="step1Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step1Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-step clickable" id="step2" onclick="showAlgorithmDetail(2)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">1.2</div>
+                            <div class="pipeline-step-title">🔢 向量化</div>
+                            <div class="pipeline-step-desc">text-embedding-3-small</div>
+                            <div class="pipeline-step-output" id="step2Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step2Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-step clickable" id="step3" onclick="showAlgorithmDetail(3)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">1.3</div>
+                            <div class="pipeline-step-title">🏪 门店召回</div>
+                            <div class="pipeline-step-desc">门店SPU/SKU × 余弦相似度</div>
+                            <div class="pipeline-step-output" id="step3Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step3Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-step clickable" id="step4" onclick="showAlgorithmDetail(4)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">1.4</div>
+                            <div class="pipeline-step-title">⚖️ 多因素重排</div>
+                            <div class="pipeline-step-desc">规则×行为×库存×上下文</div>
+                            <div class="pipeline-step-output" id="step4Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step4Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                    </div>
+                    <div class="phase-output">
+                        <div class="output-label">📦 输出</div>
+                        <div class="output-content" id="phase1Output">Top-K 商品候选集 (SKU + 基础属性 + 匹配分数)</div>
+                    </div>
+                </div>
+
+                <!-- 阶段间连接 -->
+                <div class="phase-connector">
+                    <div class="connector-line"></div>
+                    <div class="connector-icon">⬇️</div>
+                    <div class="connector-label">商品确定后，进入客制化</div>
+                </div>
+
+                <!-- 阶段二：客制化属性推荐 -->
+                <div class="pipeline-phase phase-customization" id="phase2">
+                    <div class="phase-header">
+                        <div class="phase-badge cust">阶段 2</div>
+                        <div class="phase-title">🎨 客制化 · 属性推荐</div>
+                        <div class="phase-desc">基于用户偏好的个性化定制建议</div>
+                        <div class="phase-time" id="phase2Time">-</div>
+                    </div>
+                    <div class="pipeline-steps">
+                        <div class="pipeline-step clickable cust-step" id="step5" onclick="showAlgorithmDetail(5)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">2.1</div>
+                            <div class="pipeline-step-title">📊 偏好分析</div>
+                            <div class="pipeline-step-desc">历史订单 → 客制化偏好模型</div>
+                            <div class="pipeline-step-output" id="step5Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step5Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                        <div class="pipeline-arrow cust">→</div>
+                        <div class="pipeline-step clickable cust-step" id="step6" onclick="showAlgorithmDetail(6)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">2.2</div>
+                            <div class="pipeline-step-title">🎯 属性推荐</div>
+                            <div class="pipeline-step-desc">温度/杯型/糖度/奶类</div>
+                            <div class="pipeline-step-output" id="step6Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step6Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                        <div class="pipeline-arrow cust">→</div>
+                        <div class="pipeline-step clickable cust-step" id="step7" onclick="showAlgorithmDetail(7)" title="点击查看算法详情">
+                            <div class="pipeline-step-number">2.3</div>
+                            <div class="pipeline-step-title">💬 理由生成</div>
+                            <div class="pipeline-step-desc">LLM生成推荐解释</div>
+                            <div class="pipeline-step-output" id="step7Output">等待执行...</div>
+                            <div class="pipeline-step-time" id="step7Time">-</div>
+                            <div class="step-hint">🔍 点击查看详情</div>
+                        </div>
+                    </div>
+                    <div class="phase-output cust">
+                        <div class="output-label">🎨 输出</div>
+                        <div class="output-content" id="phase2Output">每个商品的推荐客制化配置 + 个性化理由</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="panel-title">推荐结果</div>
 
             <div id="experimentBanner" class="experiment-banner" style="display: none;">
@@ -1476,19 +3265,36 @@
                 <div>交互次数: <span id="interactionCount">0</span></div>
             </div>
 
+            <!-- 实时活动日志 -->
+            <div class="activity-log-section">
+                <div class="activity-log-header">
+                    <span class="label">📊 实时活动日志</span>
+                    <button class="btn-demo-interactions" id="btnDemoInteractions" title="模拟用户交互">🎯 快速演示</button>
+                </div>
+                <div class="activity-log" id="activityLog">
+                    <div class="activity-empty">等待用户交互...</div>
+                </div>
+            </div>
+
             <div class="realtime-prefs">
                 <div class="pref-section">
-                    <div class="label">实时喜好标签</div>
+                    <div class="label">✅ 实时喜好标签 <span class="tag-count" id="likedCount">(0)</span></div>
                     <div class="pref-tags" id="likedTags">
-                        <span style="color: #888; font-size: 11px;">暂无</span>
+                        <span style="color: #888; font-size: 11px;">点击推荐卡片的👍收集偏好</span>
                     </div>
                 </div>
                 <div class="pref-section">
-                    <div class="label">实时排斥标签</div>
+                    <div class="label">❌ 实时排斥标签 <span class="tag-count" id="dislikedCount">(0)</span></div>
                     <div class="pref-tags" id="dislikedTags">
-                        <span style="color: #888; font-size: 11px;">暂无</span>
+                        <span style="color: #888; font-size: 11px;">点击推荐卡片的👎收集偏好</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- 上下文因子实时展示 -->
+            <div class="context-realtime-section" id="contextRealtimeSection" style="display: none;">
+                <div class="label">🌍 当前上下文因子</div>
+                <div class="context-factors-mini" id="contextFactorsMini"></div>
             </div>
 
             <div id="explanationPanel" class="explanation-panel" style="display: none;">
@@ -1500,20 +3306,20 @@
                 <div class="title">🎨 客制化偏好分析</div>
                 <div id="custPrefsContent">
                     <div class="pref-section">
-                        <div class="label" style="font-size: 11px; color: #5eead4;">温度偏好</div>
-                        <div id="tempPref" style="font-size: 12px; color: #0d9488; font-weight: 600;">-</div>
+                        <div class="label">温度偏好</div>
+                        <div id="tempPref" class="pref-value empty">暂无数据</div>
                     </div>
                     <div class="pref-section">
-                        <div class="label" style="font-size: 11px; color: #5eead4;">奶类偏好</div>
-                        <div id="milkPref" style="font-size: 12px; color: #0d9488; font-weight: 600;">-</div>
+                        <div class="label">奶类偏好</div>
+                        <div id="milkPref" class="pref-value empty">暂无数据</div>
                     </div>
                     <div class="pref-section">
-                        <div class="label" style="font-size: 11px; color: #5eead4;">糖度偏好</div>
-                        <div id="sugarPref" style="font-size: 12px; color: #0d9488; font-weight: 600;">-</div>
+                        <div class="label">糖度偏好</div>
+                        <div id="sugarPref" class="pref-value empty">暂无数据</div>
                     </div>
                     <div class="pref-section">
-                        <div class="label" style="font-size: 11px; color: #5eead4;">客制化关键词</div>
-                        <div id="custKeywords" class="customization-keywords"></div>
+                        <div class="label">客制化关键词</div>
+                        <div id="custKeywords" class="pref-value empty">暂无数据</div>
                     </div>
                 </div>
             </div>
@@ -1570,6 +3376,323 @@
         let selectedPersona = '健康达人';
         let interactionCount = 0;
         let currentRecommendations = [];
+
+        // MOP上下文状态
+        let selectedStoreId = '';
+        let selectedTimeOfDay = 'auto';
+        let selectedWeather = 'auto';
+        let selectedScenario = '';
+        let storesData = [];
+        let currentCity = '上海';  // 当前选中城市
+
+        // A/B实验元数据配置
+        const experimentMetadata = {
+            'rec_algorithm': {
+                icon: '🤖',
+                name: '推荐算法',
+                variants: {
+                    'embedding': { name: 'Embedding语义', desc: '基于向量语义相似度匹配', impact: '精准匹配用户意图' },
+                    'embedding_plus': { name: 'Embedding+行为', desc: '语义+历史行为加权', impact: '个性化权重提升20%' },
+                    'hybrid': { name: '混合推荐', desc: '语义+规则+热度综合', impact: '多维度优化排序' },
+                    'control': { name: '对照组', desc: '基础Embedding匹配', impact: '基准对比' }
+                }
+            },
+            'reason_style': {
+                icon: '💬',
+                name: '理由风格',
+                variants: {
+                    'concise': { name: '简洁版', desc: '一句话推荐理由', impact: '阅读效率高' },
+                    'detailed': { name: '详细版', desc: '多维度解释推荐原因', impact: '决策信息丰富' },
+                    'control': { name: '对照组', desc: '标准推荐理由', impact: '基准对比' }
+                }
+            },
+            'customization_strategy': {
+                icon: '🎨',
+                name: '客制化策略',
+                variants: {
+                    'user_history': { name: '历史偏好', desc: '基于用户过往订单', impact: '复购转化提升15%' },
+                    'item_popular': { name: '热门配置', desc: '基于商品畅销搭配', impact: '新用户友好' },
+                    'hybrid': { name: '混合策略', desc: '历史+热门智能融合', impact: '覆盖率最优' },
+                    'control': { name: '对照组', desc: '默认配置推荐', impact: '基准对比' }
+                }
+            },
+            'context_weight': {
+                icon: '🌍',
+                name: '上下文权重',
+                variants: {
+                    'low': { name: '低权重', desc: '上下文影响因子1.1x', impact: '变化平缓' },
+                    'medium': { name: '中权重', desc: '上下文影响因子1.3x', impact: '平衡推荐' },
+                    'high': { name: '高权重', desc: '上下文影响因子1.5x', impact: '场景敏感' },
+                    'control': { name: '对照组', desc: '标准上下文权重', impact: '基准对比' }
+                }
+            },
+            'weather_adaptation': {
+                icon: '🌡️',
+                name: '天气适配',
+                variants: {
+                    'none': { name: '不启用', desc: '不考虑天气因素', impact: '无天气影响' },
+                    'temperature_only': { name: '仅温度', desc: '只根据温度调整', impact: '冷热饮品适配' },
+                    'full': { name: '完整适配', desc: '温度+天气状况综合', impact: '场景匹配度+25%' },
+                    'control': { name: '对照组', desc: '基础天气适配', impact: '基准对比' }
+                }
+            },
+            'customization_display': {
+                icon: '📋',
+                name: '展示方式',
+                variants: {
+                    'inline': { name: '内联展示', desc: '客制化选项直接显示', impact: '操作步骤少' },
+                    'expandable': { name: '可展开', desc: '点击展开详细选项', impact: '界面简洁' },
+                    'control': { name: '对照组', desc: '默认展示方式', impact: '基准对比' }
+                }
+            }
+        };
+
+        // 渲染增强版实验分组
+        function renderExperimentBanner(experimentData) {
+            const banner = document.getElementById('experimentBanner');
+            const variants = document.getElementById('experimentVariants');
+
+            if (!experimentData || Object.keys(experimentData).length === 0) {
+                banner.style.display = 'none';
+                return;
+            }
+
+            variants.innerHTML = '';
+
+            for (const [expId, info] of Object.entries(experimentData)) {
+                const variantId = info.variant || info;
+                const meta = experimentMetadata[expId];
+                const variantMeta = meta?.variants?.[variantId] || meta?.variants?.['control'] || {};
+
+                const isControl = variantId === 'control' || variantId === info.variant;
+                const isTreatment = variantId !== 'control' && !variantId.includes('control');
+
+                const tag = document.createElement('div');
+                tag.className = `variant-tag ${isTreatment ? 'treatment' : ''}`;
+                tag.innerHTML = `
+                    <div class="exp-header">
+                        <span class="exp-name">
+                            <span>${meta?.icon || '🔬'}</span>
+                            ${meta?.name || expId}
+                        </span>
+                        <span class="exp-variant">${variantMeta.name || variantId}</span>
+                    </div>
+                    <div class="exp-desc">${variantMeta.desc || info.experiment_name || '实验进行中'}</div>
+                    <div class="exp-impact ${isTreatment ? 'positive' : 'neutral'}">
+                        ${isTreatment ? '⚡' : '📊'} ${variantMeta.impact || '数据收集中'}
+                    </div>
+                `;
+                variants.appendChild(tag);
+            }
+
+            banner.style.display = 'block';
+        }
+
+        // 更新天气显示
+        async function updateWeatherDisplay(city) {
+            if (selectedWeather !== 'auto') return;  // 如果不是实时天气模式，不更新
+
+            try {
+                const response = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+                const data = await response.json();
+                if (data.icon && data.temperature !== undefined) {
+                    document.querySelector('#weatherDisplay .weather-icon').textContent = data.icon;
+                    document.querySelector('#weatherDisplay .temp').textContent = `${data.temperature}°C`;
+                    currentCity = city;
+                    console.log(`天气已更新: ${city} ${data.temperature}°C ${data.icon}`);
+                }
+            } catch (error) {
+                console.error('更新天气失败:', error);
+            }
+        }
+
+        // 初始化MOP控件
+        async function initMOPControls() {
+            // 加载门店列表
+            try {
+                const response = await fetch('/api/stores');
+                const data = await response.json();
+                storesData = data.stores || [];
+
+                const storeSelect = document.getElementById('storeSelect');
+                storesData.forEach(store => {
+                    const option = document.createElement('option');
+                    option.value = store.store_id;
+                    option.textContent = `${store.name} (${store.city})`;
+                    storeSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载门店失败:', error);
+            }
+
+            // 加载默认天气信息（上海）
+            await updateWeatherDisplay('上海');
+
+            // 门店选择事件
+            document.getElementById('storeSelect').addEventListener('change', async function() {
+                selectedStoreId = this.value;
+                const storeInfo = document.getElementById('storeInfo');
+
+                if (selectedStoreId) {
+                    const store = storesData.find(s => s.store_id === selectedStoreId);
+                    if (store) {
+                        storeInfo.style.display = 'flex';
+                        const busyIndicator = document.getElementById('busyIndicator');
+                        const waitTime = document.getElementById('waitTime');
+
+                        if (store.busy_level === 'low') {
+                            busyIndicator.textContent = '🟢 空闲';
+                            busyIndicator.className = 'busy-indicator low';
+                        } else if (store.busy_level === 'medium') {
+                            busyIndicator.textContent = '🟡 适中';
+                            busyIndicator.className = 'busy-indicator medium';
+                        } else {
+                            busyIndicator.textContent = '🔴 繁忙';
+                            busyIndicator.className = 'busy-indicator high';
+                        }
+
+                        waitTime.textContent = `预计等待 ${store.wait_minutes} 分钟`;
+
+                        // 根据门店城市更新天气
+                        if (store.city && store.city !== currentCity) {
+                            await updateWeatherDisplay(store.city);
+                        }
+
+                        // 记录活动日志
+                        addActivityLog('context', `选择门店: ${store.name.split('(')[1]?.replace(')','') || store.city}`, '📍');
+                    }
+                } else {
+                    storeInfo.style.display = 'none';
+                    // 恢复默认城市天气
+                    if (currentCity !== '上海') {
+                        await updateWeatherDisplay('上海');
+                    }
+                    addActivityLog('context', `取消门店选择`, '📍');
+                }
+            });
+
+            // 时段选择事件
+            const timeLabels = { 'auto': '自动', 'morning': '早晨', 'lunch': '午餐', 'afternoon': '下午', 'evening': '晚间' };
+            document.querySelectorAll('.time-pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    document.querySelectorAll('.time-pill').forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedTimeOfDay = this.dataset.time;
+                    addActivityLog('context', `切换时段: ${timeLabels[selectedTimeOfDay] || selectedTimeOfDay}`, '⏰');
+                });
+            });
+
+            // 天气选择事件
+            const weatherLabels = { 'auto': '实时天气', 'hot': '炎热', 'rainy': '雨天', 'cold': '寒冷', 'sunny': '晴朗', 'cloudy': '多云' };
+            document.getElementById('weatherSelect').addEventListener('change', async function() {
+                selectedWeather = this.value;
+                const display = document.getElementById('weatherDisplay');
+
+                if (selectedWeather === 'auto') {
+                    // 切回实时天气，获取当前城市的天气
+                    await updateWeatherDisplay(currentCity);
+                    addActivityLog('context', `切换天气: ${currentCity} 实时天气`, '🌤️');
+                } else {
+                    // 使用模拟天气
+                    const weatherIcons = {
+                        'hot': '☀️', 'rainy': '🌧️',
+                        'cold': '❄️', 'sunny': '🌤️', 'cloudy': '☁️'
+                    };
+                    const weatherTemps = {
+                        'hot': 32, 'rainy': 22,
+                        'cold': 5, 'sunny': 25, 'cloudy': 20
+                    };
+
+                    display.querySelector('.weather-icon').textContent = weatherIcons[selectedWeather] || '🌤️';
+                    display.querySelector('.temp').textContent = `${weatherTemps[selectedWeather] || 25}°C`;
+                    addActivityLog('context', `模拟天气: ${weatherLabels[selectedWeather] || selectedWeather} ${weatherTemps[selectedWeather]}°C`, '🌡️');
+                }
+            });
+
+            // 场景卡片点击事件
+            document.querySelectorAll('.scenario-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const wasActive = this.classList.contains('active');
+                    document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+
+                    if (!wasActive) {
+                        this.classList.add('active');
+                        selectedScenario = this.dataset.scenario;
+                        const scenarioName = this.querySelector('.scenario-name')?.textContent || selectedScenario;
+                        addActivityLog('context', `选择场景: ${scenarioName}`, '🎯');
+                    } else {
+                        selectedScenario = '';
+                        addActivityLog('context', `取消场景选择`, '🎯');
+                    }
+                });
+            });
+        }
+
+        // 渲染上下文因子面板
+        function renderContextFactors(contextFactors) {
+            if (!contextFactors || Object.keys(contextFactors).length === 0) return '';
+
+            const factorIcons = {
+                'time_factor': '⏰',
+                'weather_factor': '🌡️',
+                'store_factor': '📍',
+                'scenario_factor': '🎯',
+                'inventory_factor': '📦'
+            };
+
+            const factorNames = {
+                'time_factor': '时段因子',
+                'weather_factor': '天气适配',
+                'store_factor': '门店热销',
+                'scenario_factor': '场景匹配',
+                'inventory_factor': '库存状态'
+            };
+
+            let html = '<div class="context-factors-panel"><div class="title">🌍 上下文因子</div>';
+
+            for (const [key, factor] of Object.entries(contextFactors)) {
+                if (!factor || !factor.value) continue;
+
+                const value = factor.value;
+                const isBoost = value > 1;
+                const isPenalty = value < 1;
+                const percent = Math.abs((value - 1) * 100).toFixed(0);
+                const barWidth = Math.min(100, Math.abs(value - 0.5) * 100);
+
+                html += `
+                    <div class="context-factor-row">
+                        <span class="factor-icon">${factorIcons[key] || '📊'}</span>
+                        <span class="factor-name">${factorNames[key] || key}</span>
+                        <div class="factor-bar">
+                            <div class="factor-bar-fill" style="width: ${barWidth}%"></div>
+                        </div>
+                        <span class="factor-value ${isBoost ? 'boost' : (isPenalty ? 'penalty' : '')}">
+                            ${isBoost ? '+' : (isPenalty ? '-' : '')}${percent}%
+                        </span>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // 渲染库存标签
+        function renderStockBadge(inventoryLevel) {
+            if (!inventoryLevel) return '';
+
+            const labels = {
+                'high': '充足',
+                'medium': '适中',
+                'low': '紧俏',
+                'out': '售罄'
+            };
+
+            return `<span class="stock-badge ${inventoryLevel}">${labels[inventoryLevel] || inventoryLevel}</span>`;
+        }
+
+        // 初始化
+        initMOPControls();
 
         // 人设与客制化偏好映射
         const personaCustomizationMap = {
@@ -1807,53 +3930,158 @@
         });
 
         // 获取推荐
+        // Pipeline可视化相关状态
+        let pipelineVisible = true;
+        let currentPipelineData = null;
+
+        // 切换Pipeline显示
+        function togglePipeline() {
+            const section = document.getElementById('pipelineSection');
+            const steps = document.getElementById('pipelineSteps');
+            const btn = section.querySelector('.pipeline-toggle');
+
+            pipelineVisible = !pipelineVisible;
+            steps.style.display = pipelineVisible ? 'flex' : 'none';
+            btn.textContent = pipelineVisible ? '收起' : '展开';
+        }
+
+        // 更新Pipeline步骤状态
+        function updatePipelineStep(stepNum, status, output, timeMs) {
+            const step = document.getElementById(`step${stepNum}`);
+            const outputEl = document.getElementById(`step${stepNum}Output`);
+            const timeEl = document.getElementById(`step${stepNum}Time`);
+
+            step.classList.remove('active', 'completed');
+            if (status === 'active') {
+                step.classList.add('active');
+            } else if (status === 'completed') {
+                step.classList.add('completed');
+            }
+
+            if (output) {
+                outputEl.textContent = output;
+            }
+            if (timeMs !== undefined) {
+                timeEl.textContent = `⏱️ ${timeMs}ms`;
+            }
+        }
+
+        // 重置Pipeline
+        function resetPipeline() {
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                document.getElementById(`step${i}Output`).textContent = '等待执行...';
+                document.getElementById(`step${i}Time`).textContent = '-';
+            }
+        }
+
+        // 更新Pipeline显示（从reasoning_steps数据）
+        function updatePipelineFromData(reasoningSteps, llmInfo) {
+            if (!reasoningSteps || reasoningSteps.length === 0) return;
+
+            const stepMapping = {
+                '用户画像生成': 1,
+                '用户向量化': 2,
+                '语义向量召回': 3,
+                '业务规则重排': 4,
+                '多因素重排序': 4,
+                '推荐理由生成': 5
+            };
+
+            for (const step of reasoningSteps) {
+                const stepNum = stepMapping[step.name] || step.step;
+                if (stepNum >= 1 && stepNum <= 5) {
+                    let output = '';
+                    if (step.output) {
+                        if (step.name === '用户画像生成' && step.output.search_query) {
+                            output = `查询: "${step.output.search_query}"`;
+                        } else if (step.name === '用户向量化' && step.output.vector_dim) {
+                            output = `${step.output.model}: ${step.output.vector_dim}维`;
+                        } else if (step.name === '语义向量召回' && step.output.top_candidates) {
+                            output = step.output.top_candidates.slice(0, 3).map(c => c.name).join(', ');
+                        } else if ((step.name === '业务规则重排' || step.name === '多因素重排序') && step.output.reranked_top) {
+                            output = step.output.reranked_top.slice(0, 3).map(r => r.name).join(', ');
+                        } else if (step.name === '推荐理由生成') {
+                            output = `已生成${llmInfo?.total_llm_calls || 0}条理由`;
+                        } else {
+                            output = JSON.stringify(step.output).slice(0, 50) + '...';
+                        }
+                    }
+                    updatePipelineStep(stepNum, 'completed', output, step.duration_ms);
+                }
+            }
+        }
+
         document.getElementById('btnRecommend').addEventListener('click', async () => {
             const btn = document.getElementById('btnRecommend');
             const loading = document.getElementById('loadingIndicator');
             const grid = document.getElementById('recommendationsGrid');
+            const pipelineSection = document.getElementById('pipelineSection');
 
             btn.disabled = true;
             btn.textContent = '推荐中...';
             loading.style.display = 'flex';
             grid.innerHTML = '';
 
+            // 显示并重置Pipeline
+            pipelineSection.style.display = 'block';
+            resetPipeline();
+
+            // 模拟步骤执行动画
+            updatePipelineStep(1, 'active', '正在分析用户画像...', undefined);
+
             try {
-                const response = await fetch('/api/embedding/recommend/v2', {
+                const enableContext = document.getElementById('enableContext').checked;
+                const useV3 = enableContext;
+
+                // 构建请求体
+                const requestBody = {
+                    persona_type: selectedPersona,
+                    user_id: userId,
+                    session_id: sessionId,
+                    top_k: 6,
+                    enable_ab_test: document.getElementById('enableABTest').checked,
+                    enable_behavior: document.getElementById('enableBehavior').checked,
+                    enable_session: document.getElementById('enableSession').checked,
+                    enable_explainability: document.getElementById('enableExplainability').checked,
+                    enable_customization: document.getElementById('enableCustomization').checked
+                };
+
+                // V3特有参数
+                if (useV3) {
+                    requestBody.enable_context = true;
+                    if (selectedStoreId) requestBody.store_id = selectedStoreId;
+                    if (selectedWeather !== 'auto') requestBody.weather_override = selectedWeather;
+                    if (selectedScenario) requestBody.scenario_override = selectedScenario;
+                    if (selectedTimeOfDay !== 'auto') {
+                        requestBody.context = { time_of_day: selectedTimeOfDay };
+                    }
+                }
+
+                const apiEndpoint = useV3 ? '/api/embedding/recommend/v3' : '/api/embedding/recommend/v2';
+                const response = await fetch(apiEndpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        persona_type: selectedPersona,
-                        user_id: userId,
-                        session_id: sessionId,
-                        top_k: 6,
-                        enable_ab_test: document.getElementById('enableABTest').checked,
-                        enable_behavior: document.getElementById('enableBehavior').checked,
-                        enable_session: document.getElementById('enableSession').checked,
-                        enable_explainability: document.getElementById('enableExplainability').checked,
-                        enable_customization: document.getElementById('enableCustomization').checked
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
                 currentRecommendations = data.recommendations || [];
 
-                // 显示实验分组
-                if (data.experiment && Object.keys(data.experiment).length > 0) {
-                    const banner = document.getElementById('experimentBanner');
-                    const variants = document.getElementById('experimentVariants');
-                    variants.innerHTML = '';
-
-                    for (const [expId, info] of Object.entries(data.experiment)) {
-                        const tag = document.createElement('span');
-                        tag.className = 'variant-tag';
-                        tag.textContent = `${info.experiment_name || expId}: ${info.variant_name || info.variant}`;
-                        variants.appendChild(tag);
-                    }
-
-                    banner.style.display = 'block';
+                // 更新Pipeline可视化
+                if (data.reasoning_steps) {
+                    updatePipelineFromData(data.reasoning_steps, data.llm_info);
                 } else {
-                    document.getElementById('experimentBanner').style.display = 'none';
+                    // 如果没有详细步骤数据，标记所有步骤完成
+                    for (let i = 1; i <= 5; i++) {
+                        updatePipelineStep(i, 'completed', '✓ 完成', undefined);
+                    }
                 }
+
+                // 显示实验分组
+                // 使用增强版实验分组渲染
+                renderExperimentBanner(data.experiment);
 
                 // 显示指标
                 if (data.metrics) {
@@ -1876,6 +4104,15 @@
                     updateCustomizationPrefs();
                 }
 
+                // 更新上下文因子迷你展示 (V3 API)
+                if (useV3 && data.recommendations?.[0]?.context_factors) {
+                    updateContextFactorsMini(data.recommendations[0].context_factors);
+                    addActivityLog('context', `推荐已基于上下文因子调整`, '🎯');
+                }
+
+                // 记录推荐获取活动
+                addActivityLog('click', `获取 ${data.recommendations?.length || 0} 个推荐`, '📋');
+
             } catch (error) {
                 console.error('Error:', error);
                 grid.innerHTML = `<div style="color: red; padding: 20px;">请求失败: ${error.message}</div>`;
@@ -1895,30 +4132,195 @@
                 card.className = 'rec-card';
 
                 const breakdown = rec.score_breakdown || {};
-                const behaviorClass = breakdown.behavior_multiplier > 1 ? 'boost' : '';
-                const sessionClass = breakdown.session_multiplier > 1 ? 'boost' : (breakdown.session_multiplier < 1 ? 'penalty' : '');
-                const customizationClass = breakdown.customization_multiplier > 1 ? 'boost' : (breakdown.customization_multiplier < 1 ? 'penalty' : '');
+                const custBoostDetail = breakdown.customization_boost_detail || {};
 
-                // 构建客制化建议HTML
+                // 计算各因素的类别
+                const getMultiplierClass = (val) => val > 1 ? 'boost' : (val < 1 ? 'penalty' : 'neutral');
+                const getMultiplierSign = (val) => val > 1 ? '+' : (val < 1 ? '' : '');
+                const formatMultiplier = (val) => {
+                    if (!val || val === 1) return '×1.00';
+                    const percent = ((val - 1) * 100).toFixed(0);
+                    return `×${val.toFixed(2)} (${percent > 0 ? '+' : ''}${percent}%)`;
+                };
+
+                // 构建算法洞察徽章
+                let insightBadges = '';
+                if (rec.item.is_new) insightBadges += '<span class="algo-insight-badge new-item">🆕 新品加权</span>';
+                if (rec.item.is_seasonal) insightBadges += '<span class="algo-insight-badge seasonal">🍂 季节限定</span>';
+                if (breakdown.order_boost_detail?.repurchase_boost > 1) insightBadges += '<span class="algo-insight-badge repurchase">🔄 复购推荐</span>';
+                if (breakdown.is_cold_start) insightBadges += '<span class="algo-insight-badge cold-start">❄️ 冷启动</span>';
+
+                // 构建增强版分数拆解HTML
+                const similarityPct = ((breakdown.embedding_similarity || 0) * 100).toFixed(0);
+                const scoreBreakdownHtml = `
+                    <div class="score-breakdown-enhanced">
+                        <!-- 语义相似度 -->
+                        <div class="score-progress-item">
+                            <div class="score-progress-header">
+                                <span class="score-progress-label">🔍 语义相似度</span>
+                                <span class="score-progress-value neutral">${similarityPct}%</span>
+                            </div>
+                            <div class="score-progress-bar">
+                                <div class="score-progress-fill similarity" style="width: ${similarityPct}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 业务规则 -->
+                        <div class="score-progress-item">
+                            <div class="score-progress-header">
+                                <span class="score-progress-label">⚙️ 业务规则</span>
+                                <span class="score-progress-value ${getMultiplierClass(breakdown.rule_multiplier)}">${formatMultiplier(breakdown.rule_multiplier)}</span>
+                            </div>
+                            <div class="score-progress-bar">
+                                <div class="score-progress-fill rule" style="width: ${Math.min(100, (breakdown.rule_multiplier || 1) * 50)}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 历史行为 -->
+                        <div class="score-progress-item">
+                            <div class="score-progress-header">
+                                <span class="score-progress-label">📈 历史行为</span>
+                                <span class="score-progress-value ${getMultiplierClass(breakdown.behavior_multiplier)}">${formatMultiplier(breakdown.behavior_multiplier)}</span>
+                            </div>
+                            <div class="score-progress-bar">
+                                <div class="score-progress-fill behavior" style="width: ${Math.min(100, (breakdown.behavior_multiplier || 1) * 50)}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Session偏好 -->
+                        <div class="score-progress-item">
+                            <div class="score-progress-header">
+                                <span class="score-progress-label">💡 Session偏好</span>
+                                <span class="score-progress-value ${getMultiplierClass(breakdown.session_multiplier)}">${formatMultiplier(breakdown.session_multiplier)}</span>
+                            </div>
+                            <div class="score-progress-bar">
+                                <div class="score-progress-fill session" style="width: ${Math.min(100, (breakdown.session_multiplier || 1) * 50)}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 客制化匹配 - 可展开 -->
+                        <div class="customization-factors" id="cust-factors-${index}">
+                            <div class="customization-factors-header" onclick="toggleCustomizationFactors(${index})">
+                                <span class="customization-factors-title">
+                                    🎨 客制化匹配
+                                    <span style="font-weight: 800; margin-left: 4px;">${formatMultiplier(breakdown.customization_multiplier)}</span>
+                                </span>
+                                <span class="customization-factors-toggle">▼</span>
+                            </div>
+                            <div class="customization-factors-content">
+                                ${renderCustomizationFactors(custBoostDetail)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 构建增强版客制化建议卡片
                 const suggestedCust = rec.suggested_customization;
-                let customizationHtml = '';
+                let suggestionCardHtml = '';
                 if (suggestedCust && suggestedCust.suggested_customization) {
                     const sc = suggestedCust.suggested_customization;
                     const confidence = suggestedCust.confidence || 0;
-                    const confClass = confidence >= 0.7 ? 'confidence-high' : (confidence >= 0.4 ? 'confidence-medium' : 'confidence-low');
+                    const confSource = suggestedCust.confidence_source || 'default';
+                    const confClass = confidence >= 0.7 ? 'high' : (confidence >= 0.4 ? 'medium' : 'low');
+
+                    // 根据来源显示不同的置信度标签
+                    const sourceLabels = {
+                        'preset': '📋 预设',
+                        'history': '📊 历史',
+                        'preset_history': '📋+📊 混合',
+                        'default': '⚙️ 默认'
+                    };
+                    const confSourceText = sourceLabels[confSource] || '';
                     const confText = confidence >= 0.7 ? '高置信度' : (confidence >= 0.4 ? '中置信度' : '低置信度');
 
-                    customizationHtml = `
-                        <div class="customization-section">
-                            <div class="title">
-                                🎨 推荐客制化
-                                <span class="confidence-badge ${confClass}">${confText} ${(confidence * 100).toFixed(0)}%</span>
+                    // 计算价格调整
+                    const priceAdjust = suggestedCust.price_adjustment || 0;
+                    const finalPrice = rec.item.base_price + priceAdjust;
+
+                    suggestionCardHtml = `
+                        <div class="customization-suggestion-card">
+                            <div class="suggestion-card-header">
+                                <span class="suggestion-card-title">✨ 为您推荐的配置</span>
+                                <span class="suggestion-confidence ${confClass}" title="来源: ${confSourceText}">${confSourceText} ${(confidence * 100).toFixed(0)}%</span>
                             </div>
-                            ${sc.temperature ? `<div class="customization-item"><span class="label">温度</span><span class="value">${formatTemp(sc.temperature)}</span></div>` : ''}
-                            ${sc.cup_size ? `<div class="customization-item"><span class="label">杯型</span><span class="value">${formatSize(sc.cup_size)}</span></div>` : ''}
-                            ${sc.sugar_level ? `<div class="customization-item"><span class="label">糖度</span><span class="value">${formatSugar(sc.sugar_level)}</span></div>` : ''}
-                            ${sc.milk_type ? `<div class="customization-item"><span class="label">奶类</span><span class="value">${formatMilk(sc.milk_type)}</span></div>` : ''}
-                            ${suggestedCust.reason ? `<div class="customization-reason">💡 ${suggestedCust.reason}</div>` : ''}
+                            <div class="suggestion-items">
+                                ${sc.temperature ? `
+                                    <div class="suggestion-item">
+                                        <span class="suggestion-item-icon">🌡️</span>
+                                        <div class="suggestion-item-info">
+                                            <div class="suggestion-item-label">温度${sc._weather_temp_boost && Object.keys(sc._weather_temp_boost).length > 0 ? ' <span class="weather-factor-indicator" title="天气因子已影响温度推荐">🌤️</span>' : ''}</div>
+                                            <div class="suggestion-item-value">${formatTemp(sc.temperature)}</div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${sc.cup_size ? `
+                                    <div class="suggestion-item">
+                                        <span class="suggestion-item-icon">📏</span>
+                                        <div class="suggestion-item-info">
+                                            <div class="suggestion-item-label">杯型</div>
+                                            <div class="suggestion-item-value">${formatSize(sc.cup_size)}</div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${sc.sugar_level ? `
+                                    <div class="suggestion-item">
+                                        <span class="suggestion-item-icon">🍬</span>
+                                        <div class="suggestion-item-info">
+                                            <div class="suggestion-item-label">糖度</div>
+                                            <div class="suggestion-item-value">${formatSugar(sc.sugar_level)}</div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${sc.milk_type ? `
+                                    <div class="suggestion-item">
+                                        <span class="suggestion-item-icon">🥛</span>
+                                        <div class="suggestion-item-info">
+                                            <div class="suggestion-item-label">奶类</div>
+                                            <div class="suggestion-item-value">${formatMilk(sc.milk_type)}</div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${(() => {
+                                // 生成客制化推荐理由，包含天气因子
+                                let reasonHtml = '';
+                                if (suggestedCust.reason) {
+                                    reasonHtml = suggestedCust.reason;
+                                }
+                                // 添加天气因子说明（仅当商品支持对应温度时才显示）
+                                if (sc._weather_temp_boost && Object.keys(sc._weather_temp_boost).length > 0) {
+                                    const hotBoost = sc._weather_temp_boost['HOT'] || 0;
+                                    const icedBoost = sc._weather_temp_boost['ICED'] || 0;
+                                    // 获取商品支持的温度 (注意：值是中文，如"热"、"冰"等)
+                                    const availableTemps = rec.item.available_temperatures || [];
+                                    const supportsHot = availableTemps.some(t => t === '热' || t === '特别热' || t === '微热');
+                                    const supportsIced = availableTemps.some(t => t === '冰' || t === '少冰' || t === '去冰' || t === '全冰');
+
+                                    // 只有当商品支持热饮且天气推荐热饮时才显示
+                                    if (hotBoost > 0 && supportsHot) {
+                                        reasonHtml += (reasonHtml ? '；' : '') + '🌡️ 天气较冷推荐热饮';
+                                    } else if (icedBoost > 0 && supportsIced) {
+                                        reasonHtml += (reasonHtml ? '；' : '') + '☀️ 天气较热推荐冰饮';
+                                    } else if (hotBoost > 0 && !supportsHot) {
+                                        // 商品不支持热饮但天气推荐热饮，提示用户
+                                        reasonHtml += (reasonHtml ? '；' : '') + '❄️ 此商品仅支持冷饮';
+                                    } else if (icedBoost > 0 && !supportsIced) {
+                                        // 商品不支持冰饮但天气推荐冰饮，提示用户
+                                        reasonHtml += (reasonHtml ? '；' : '') + '🔥 此商品仅支持热饮';
+                                    }
+                                }
+                                return reasonHtml ? `<div style="font-size: 12px; color: #166534; margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px;">💡 ${reasonHtml}</div>` : '';
+                            })()}
+                            <div class="suggestion-price">
+                                <div>
+                                    <div class="suggestion-price-label">推荐配置价格</div>
+                                    ${priceAdjust !== 0 ? `<div class="suggestion-price-adjust">${priceAdjust > 0 ? '+' : ''}¥${priceAdjust} 客制化</div>` : ''}
+                                </div>
+                                <span class="suggestion-price-value">¥${finalPrice.toFixed(0)}</span>
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="btn-add-suggested" onclick="addToCart('${rec.item.sku}', '${rec.item.name}', ${finalPrice}, this, ${JSON.stringify(sc).replace(/"/g, "'")})">🛒 一键添加推荐配置</button>
+                            </div>
                         </div>
                     `;
                 }
@@ -1939,34 +4341,14 @@
                                 ${rec.item.category} · ¥${rec.item.base_price}
                                 ${memberPrice ? `<span class="member-price-badge">⭐ 会员 ¥${memberPrice}</span>` : ''}
                             </div>
+                            ${insightBadges ? `<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">${insightBadges}</div>` : ''}
                         </div>
-                        <div class="match-score">${(rec.match_score * 100).toFixed(1)}%</div>
+                        <div class="match-score">${(rec.match_score * 100).toFixed(0)}</div>
                     </div>
 
-                    <div class="score-breakdown">
-                        <div class="score-row">
-                            <span class="label">Embedding相似度</span>
-                            <span class="value">${(breakdown.embedding_similarity * 100).toFixed(1)}%</span>
-                        </div>
-                        <div class="score-row">
-                            <span class="label">业务规则</span>
-                            <span class="value">×${breakdown.rule_multiplier?.toFixed(2) || '1.00'}</span>
-                        </div>
-                        <div class="score-row">
-                            <span class="label">历史行为</span>
-                            <span class="value ${behaviorClass}">×${breakdown.behavior_multiplier?.toFixed(2) || '1.00'}</span>
-                        </div>
-                        <div class="score-row">
-                            <span class="label">Session偏好</span>
-                            <span class="value ${sessionClass}">×${breakdown.session_multiplier?.toFixed(2) || '1.00'}</span>
-                        </div>
-                        <div class="score-row" style="background: rgba(3,105,161,0.1); margin: 4px -10px; padding: 4px 10px;">
-                            <span class="label" style="color: #0369a1;">🎨 客制化匹配</span>
-                            <span class="value ${customizationClass}" style="color: #0369a1;">×${breakdown.customization_multiplier?.toFixed(2) || '1.00'}</span>
-                        </div>
-                    </div>
+                    ${scoreBreakdownHtml}
 
-                    ${customizationHtml}
+                    ${suggestionCardHtml}
 
                     ${custOptionsHtml ? `
                     <div class="cust-options-panel" id="${custPanelId}">
@@ -1992,12 +4374,65 @@
                     <div class="feedback-buttons">
                         <button class="feedback-btn like" onclick="recordFeedback('${rec.item.sku}', 'like', this, ${JSON.stringify(rec.item.tags).replace(/"/g, "'")})">👍 喜欢</button>
                         <button class="feedback-btn dislike" onclick="recordFeedback('${rec.item.sku}', 'dislike', this, ${JSON.stringify(rec.item.tags).replace(/"/g, "'")})">👎 不喜欢</button>
-                        <button class="btn-add-cart" onclick="addToCart('${rec.item.sku}', '${rec.item.name}', ${rec.item.base_price}, this, ${JSON.stringify(rec.suggested_customization?.suggested_customization || {}).replace(/"/g, "'")})">🛒 加入</button>
+                        <button class="btn-add-cart" onclick="addToCart('${rec.item.sku}', '${rec.item.name}', ${rec.item.base_price}, this, ${JSON.stringify(rec.suggested_customization?.suggested_customization || {}).replace(/"/g, "'")})">🛒 自定义加入</button>
                     </div>
                 `;
 
                 grid.appendChild(card);
             });
+        }
+
+        // 渲染客制化因素详情
+        function renderCustomizationFactors(detail) {
+            if (!detail || !detail.factors) {
+                return '<div style="font-size: 11px; color: #64748b; padding: 8px 0;">暂无客制化偏好数据</div>';
+            }
+
+            const factors = detail.factors;
+            const factorConfig = {
+                temperature_match: { icon: '🌡️', name: '温度匹配', desc: '支持您偏好的温度' },
+                size_match: { icon: '📏', name: '杯型匹配', desc: '支持您常选的杯型' },
+                milk_match: { icon: '🥛', name: '奶类匹配', desc: '支持您偏好的奶类' },
+                sugar_match: { icon: '🍬', name: '糖度匹配', desc: '支持您的糖度偏好' }
+            };
+
+            let html = '';
+            for (const [key, config] of Object.entries(factorConfig)) {
+                const value = factors[key] || 1;
+                const isPositive = value > 1;
+                const isNegative = value < 1;
+                const barClass = isPositive ? 'positive' : (isNegative ? 'negative' : 'neutral');
+                const valueClass = isPositive ? 'positive' : (isNegative ? 'negative' : 'neutral');
+                const barWidth = Math.abs((value - 1) * 200);
+                const displayValue = isPositive ? `+${((value - 1) * 100).toFixed(0)}%` :
+                                     isNegative ? `${((value - 1) * 100).toFixed(0)}%` : '±0%';
+
+                html += `
+                    <div class="cust-factor-item">
+                        <span class="cust-factor-icon">${config.icon}</span>
+                        <div class="cust-factor-info">
+                            <div class="cust-factor-name">${config.name}</div>
+                            <div class="cust-factor-desc">${isPositive ? '✓ ' : ''}${config.desc}</div>
+                        </div>
+                        <div class="cust-factor-bar">
+                            <div class="cust-factor-bar-fill ${barClass}" style="width: ${Math.min(100, barWidth)}%"></div>
+                        </div>
+                        <span class="cust-factor-value ${valueClass}">${displayValue}</span>
+                    </div>
+                `;
+            }
+
+            if (detail.explanation) {
+                html += `<div style="font-size: 11px; color: #0369a1; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">💡 ${detail.explanation}</div>`;
+            }
+
+            return html;
+        }
+
+        // 切换客制化因素展开/收起
+        function toggleCustomizationFactors(index) {
+            const panel = document.getElementById(`cust-factors-${index}`);
+            panel.classList.toggle('expanded');
         }
 
         function showExplanation(explanation) {
@@ -2069,8 +4504,39 @@
             }
         }
 
-        function updateRealtimePrefs(type, tags) {
+        // ============ 活动日志功能 ============
+        let likedTagsSet = new Set();
+        let dislikedTagsSet = new Set();
+
+        function addActivityLog(type, message, icon = '') {
+            const log = document.getElementById('activityLog');
+            const emptyMsg = log.querySelector('.activity-empty');
+            if (emptyMsg) emptyMsg.remove();
+
+            const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const item = document.createElement('div');
+            item.className = `activity-item ${type}`;
+            item.innerHTML = `
+                <span class="time">${time}</span>
+                <span class="action">${icon} ${message}</span>
+            `;
+
+            log.insertBefore(item, log.firstChild);
+
+            // 保留最近10条
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function updateTagCounts() {
+            document.getElementById('likedCount').textContent = `(${likedTagsSet.size})`;
+            document.getElementById('dislikedCount').textContent = `(${dislikedTagsSet.size})`;
+        }
+
+        function updateRealtimePrefs(type, tags, itemName = '') {
             const container = type === 'like' ? document.getElementById('likedTags') : document.getElementById('dislikedTags');
+            const tagSet = type === 'like' ? likedTagsSet : dislikedTagsSet;
 
             // 解析tags (处理单引号)
             let parsedTags = [];
@@ -2090,16 +4556,137 @@
             }
 
             // 添加标签
+            let newTagsAdded = [];
             parsedTags.forEach(tag => {
                 if (!container.querySelector(`[data-tag="${tag}"]`)) {
+                    tagSet.add(tag);
+                    newTagsAdded.push(tag);
                     const span = document.createElement('span');
-                    span.className = `pref-tag ${type === 'like' ? 'liked' : 'disliked'}`;
+                    span.className = `pref-tag ${type === 'like' ? 'liked' : 'disliked'} new`;
                     span.textContent = tag;
                     span.dataset.tag = tag;
                     container.appendChild(span);
+
+                    // 移除动画类
+                    setTimeout(() => span.classList.remove('new'), 500);
                 }
             });
+
+            // 更新标签计数
+            updateTagCounts();
+
+            // 添加活动日志
+            if (newTagsAdded.length > 0) {
+                const icon = type === 'like' ? '👍' : '👎';
+                const action = type === 'like' ? '喜欢' : '不喜欢';
+                addActivityLog(type, `${action}: +${newTagsAdded.length}个标签 [${newTagsAdded.slice(0,2).join(', ')}${newTagsAdded.length > 2 ? '...' : ''}]`, icon);
+            }
         }
+
+        // 更新上下文因子迷你展示
+        function updateContextFactorsMini(contextFactors) {
+            if (!contextFactors) return;
+
+            const section = document.getElementById('contextRealtimeSection');
+            const container = document.getElementById('contextFactorsMini');
+            section.style.display = 'block';
+
+            const factorNames = {
+                'time_factor': '⏰ 时段',
+                'weather_factor': '🌡️ 天气',
+                'store_factor': '📍 门店',
+                'scenario_factor': '🎯 场景'
+            };
+
+            let html = '';
+            for (const [key, data] of Object.entries(contextFactors)) {
+                if (factorNames[key] && data.value !== undefined) {
+                    const valueClass = data.value > 1.05 ? 'boost' : (data.value < 0.95 ? 'reduce' : 'neutral');
+                    const valueStr = data.value > 1 ? `+${((data.value - 1) * 100).toFixed(0)}%` : `${((data.value - 1) * 100).toFixed(0)}%`;
+                    html += `
+                        <div class="context-factor-mini">
+                            <span class="name">${factorNames[key]}</span>
+                            <span class="value ${valueClass}">${data.value === 1 ? '0%' : valueStr}</span>
+                        </div>
+                    `;
+                }
+            }
+            container.innerHTML = html;
+        }
+
+        // ============ 快速演示功能 ============
+        document.getElementById('btnDemoInteractions')?.addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = '演示中...';
+
+            // 先获取推荐
+            if (currentRecommendations.length === 0) {
+                await getRecommendations();
+            }
+
+            // 模拟一系列交互
+            const demoActions = [
+                { type: 'context', delay: 300, action: () => {
+                    addActivityLog('context', `切换门店: ${selectedStoreId ? storesData.find(s=>s.store_id===selectedStoreId)?.name?.split('(')[1]?.replace(')','') || '上海' : '上海'}`, '📍');
+                }},
+                { type: 'context', delay: 600, action: () => {
+                    addActivityLog('context', `天气: ${currentCity} ${document.querySelector('#weatherDisplay .temp')?.textContent || '25°C'}`, '🌤️');
+                }},
+            ];
+
+            // 从当前推荐中选取商品进行模拟交互
+            if (currentRecommendations.length > 0) {
+                const rec1 = currentRecommendations[0];
+                demoActions.push({
+                    type: 'click', delay: 1000, action: () => {
+                        addActivityLog('click', `浏览: ${rec1.item.name}`, '👀');
+                        interactionCount++;
+                        document.getElementById('interactionCount').textContent = interactionCount;
+                    }
+                });
+                demoActions.push({
+                    type: 'like', delay: 1500, action: () => {
+                        updateRealtimePrefs('like', rec1.item.tags, rec1.item.name);
+                    }
+                });
+
+                if (currentRecommendations.length > 1) {
+                    const rec2 = currentRecommendations[1];
+                    demoActions.push({
+                        type: 'click', delay: 2000, action: () => {
+                            addActivityLog('click', `浏览: ${rec2.item.name}`, '👀');
+                            interactionCount++;
+                            document.getElementById('interactionCount').textContent = interactionCount;
+                        }
+                    });
+                    demoActions.push({
+                        type: 'cart', delay: 2500, action: () => {
+                            addActivityLog('cart', `加购: ${rec2.item.name}`, '🛒');
+                            updateRealtimePrefs('like', rec2.item.tags, rec2.item.name);
+                        }
+                    });
+                }
+
+                if (currentRecommendations.length > 2) {
+                    const rec3 = currentRecommendations[2];
+                    demoActions.push({
+                        type: 'dislike', delay: 3000, action: () => {
+                            updateRealtimePrefs('dislike', rec3.item.tags, rec3.item.name);
+                        }
+                    });
+                }
+            }
+
+            // 执行演示
+            for (const action of demoActions) {
+                await new Promise(resolve => setTimeout(resolve, action.delay));
+                action.action();
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🎯 快速演示';
+        });
 
         // ============ 订单历史对比演示 ============
         const comparisonUserId = 'demo_order_user_' + Date.now();
@@ -2119,7 +4706,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        user_id: comparisonUserId,
+                        user_id: userId,  // Use current user so preferences show in panel
                         order_count: 20,
                         days_range: 60,
                         category_weights: {
@@ -2258,52 +4845,80 @@
 
         // 更新客制化偏好面板
         async function updateCustomizationPrefs() {
+            // 辅助函数：更新偏好项
+            function updatePrefItem(elementId, value) {
+                const el = document.getElementById(elementId);
+                if (value && value !== '-') {
+                    el.textContent = value;
+                    el.className = 'pref-value';
+                } else {
+                    el.textContent = '暂无数据';
+                    el.className = 'pref-value empty';
+                }
+            }
+
             try {
                 const response = await fetch(`/api/behavior/user/${userId}`);
                 const data = await response.json();
 
-                if (data.customization_preference) {
-                    const panel = document.getElementById('custPrefsPanel');
-                    panel.style.display = 'block';
+                const panel = document.getElementById('custPrefsPanel');
+                panel.style.display = 'block';
 
+                if (data.customization_preference) {
                     const cp = data.customization_preference;
 
-                    // 温度偏好
-                    if (cp.temperature_preference) {
-                        const temps = Object.entries(cp.temperature_preference)
+                    // 温度偏好 (backend returns 'temperature' not 'temperature_preference')
+                    if (cp.temperature && Object.keys(cp.temperature).length > 0) {
+                        const temps = Object.entries(cp.temperature)
                             .sort((a, b) => b[1] - a[1])
                             .map(([k, v]) => `${formatTemp(k)} ${(v * 100).toFixed(0)}%`)
                             .join(', ');
-                        document.getElementById('tempPref').textContent = temps || '-';
+                        updatePrefItem('tempPref', temps);
+                    } else {
+                        updatePrefItem('tempPref', null);
                     }
 
-                    // 奶类偏好
-                    if (cp.milk_preference) {
-                        const milks = Object.entries(cp.milk_preference)
+                    // 奶类偏好 (backend returns 'milk' not 'milk_preference')
+                    if (cp.milk && Object.keys(cp.milk).length > 0) {
+                        const milks = Object.entries(cp.milk)
                             .sort((a, b) => b[1] - a[1])
                             .map(([k, v]) => `${formatMilk(k)} ${(v * 100).toFixed(0)}%`)
                             .join(', ');
-                        document.getElementById('milkPref').textContent = milks || '-';
+                        updatePrefItem('milkPref', milks);
+                    } else {
+                        updatePrefItem('milkPref', null);
                     }
 
-                    // 糖度偏好
-                    if (cp.sugar_preference) {
-                        const sugars = Object.entries(cp.sugar_preference)
+                    // 糖度偏好 (backend returns 'sugar' not 'sugar_preference')
+                    if (cp.sugar && Object.keys(cp.sugar).length > 0) {
+                        const sugars = Object.entries(cp.sugar)
                             .sort((a, b) => b[1] - a[1])
                             .map(([k, v]) => `${formatSugar(k)} ${(v * 100).toFixed(0)}%`)
                             .join(', ');
-                        document.getElementById('sugarPref').textContent = sugars || '-';
+                        updatePrefItem('sugarPref', sugars);
+                    } else {
+                        updatePrefItem('sugarPref', null);
                     }
 
                     // 客制化关键词
                     const keywordsContainer = document.getElementById('custKeywords');
                     if (data.customization_keywords && data.customization_keywords.length > 0) {
+                        keywordsContainer.className = 'pref-value';
                         keywordsContainer.innerHTML = data.customization_keywords
                             .map(k => `<span class="customization-keyword">${k}</span>`)
-                            .join('');
+                            .join(' ');
                     } else {
-                        keywordsContainer.innerHTML = '<span style="color: #888; font-size: 11px;">暂无</span>';
+                        keywordsContainer.className = 'pref-value empty';
+                        keywordsContainer.textContent = '暂无数据';
                     }
+                } else {
+                    // 没有偏好数据
+                    updatePrefItem('tempPref', null);
+                    updatePrefItem('milkPref', null);
+                    updatePrefItem('sugarPref', null);
+                    const keywordsContainer = document.getElementById('custKeywords');
+                    keywordsContainer.className = 'pref-value empty';
+                    keywordsContainer.textContent = '暂无数据';
                 }
             } catch (error) {
                 console.log('No customization preferences yet');
@@ -2488,21 +5103,8 @@
                 const data = await response.json();
                 currentRecommendations = data.recommendations || [];
 
-                // 显示实验分组
-                if (data.experiment && Object.keys(data.experiment).length > 0) {
-                    const banner = document.getElementById('experimentBanner');
-                    const variants = document.getElementById('experimentVariants');
-                    variants.innerHTML = '';
-
-                    for (const [expId, info] of Object.entries(data.experiment)) {
-                        const tag = document.createElement('span');
-                        tag.className = 'variant-tag';
-                        tag.textContent = `${info.experiment_name || expId}: ${info.variant_name || info.variant}`;
-                        variants.appendChild(tag);
-                    }
-
-                    banner.style.display = 'block';
-                }
+                // 使用增强版实验分组渲染
+                renderExperimentBanner(data.experiment);
 
                 // 显示指标
                 if (data.metrics) {
@@ -2576,6 +5178,18 @@
                     renderCart();
                     btn.classList.add('added');
                     btn.textContent = '✓ 已加入';
+
+                    // 记录活动日志和更新偏好
+                    addActivityLog('cart', `加入购物车: ${name}`, '🛒');
+                    interactionCount++;
+                    document.getElementById('interactionCount').textContent = interactionCount;
+
+                    // 从推荐中找到商品获取标签
+                    const rec = currentRecommendations.find(r => r.item.sku === sku);
+                    if (rec?.item?.tags) {
+                        updateRealtimePrefs('like', rec.item.tags, name);
+                    }
+
                     setTimeout(() => {
                         btn.classList.remove('added');
                         btn.textContent = '🛒 加入';
@@ -2868,6 +5482,781 @@
 
         // 页面加载时初始化购物车
         loadCart();
+    </script>
+
+    <!-- 算法详情弹窗 -->
+    <div class="algorithm-modal-overlay" id="algorithmModal" onclick="closeAlgorithmModal(event)">
+        <div class="algorithm-modal" onclick="event.stopPropagation()">
+            <div class="algorithm-modal-header">
+                <div class="algorithm-modal-title" id="algorithmModalTitle">算法详情</div>
+                <button class="algorithm-modal-close" onclick="closeAlgorithmModal()">&times;</button>
+            </div>
+            <div class="algorithm-modal-body" id="algorithmModalBody">
+                <!-- 内容动态填充 -->
+            </div>
+            <div class="algorithm-modal-footer">
+                <div class="algorithm-nav">
+                    <button class="btn-nav" id="btnPrevStep" onclick="navigateStep(-1)">← 上一步</button>
+                    <span class="step-indicator" id="stepIndicator">1 / 5</span>
+                    <button class="btn-nav" id="btnNextStep" onclick="navigateStep(1)">下一步 →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ 算法详情弹窗 ============
+        let currentDetailStep = 1;
+
+        const algorithmDetails = {
+            1: {
+                title: "👤 Step 1: 用户画像生成",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>将用户选择的人群类型（Persona）转化为可用于语义搜索的自然语言查询。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📋 输入数据</h3>
+                        <div class="code-block">
+{
+  "persona_type": "咖啡重度用户",
+  "user_id": "user_abc123",
+  "session_id": "sess_xyz789"
+}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>⚙️ 处理流程</h3>
+                        <div class="flow-diagram">
+                            <div class="flow-step">
+                                <div class="flow-num">1</div>
+                                <div class="flow-content">
+                                    <strong>Persona模板匹配</strong>
+                                    <p>从预定义的6种用户画像模板中匹配：</p>
+                                    <ul>
+                                        <li>☕ 咖啡重度用户 → 浓郁、提神、经典</li>
+                                        <li>🥗 健康达人 → 低卡、无糖、燕麦奶</li>
+                                        <li>🍰 甜品爱好者 → 甜蜜、奶油、星冰乐</li>
+                                        <li>🆕 尝鲜派 → 新品、限定、网红</li>
+                                        <li>💼 实用主义 → 经典、性价比、便携</li>
+                                        <li>🌿 养生白领 → 健康、茶饮、低因</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="flow-step">
+                                <div class="flow-num">2</div>
+                                <div class="flow-content">
+                                    <strong>LLM增强（可选）</strong>
+                                    <p>调用GPT-4o-mini生成更丰富的用户偏好描述：</p>
+                                    <div class="code-block" style="font-size: 11px;">
+Prompt: "根据用户类型'咖啡重度用户'，
+生成适合推荐搜索的关键词..."
+
+Output: "喜欢浓郁口感的经典咖啡，
+追求提神效果，偏好美式、拿铁等传统饮品"
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flow-step">
+                                <div class="flow-num">3</div>
+                                <div class="flow-content">
+                                    <strong>生成搜索Query</strong>
+                                    <p>组合用户偏好 + 上下文生成最终查询文本</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📤 输出结果</h3>
+                        <div class="code-block">
+{
+  "search_query": "喜欢浓郁口感的经典咖啡，追求提神效果，
+偏好美式、拿铁等传统咖啡饮品，注重咖啡因含量",
+  "preference_tags": ["浓郁", "提神", "经典", "咖啡因"],
+  "duration_ms": 245
+}
+                        </div>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 设计要点</h3>
+                        <ul>
+                            <li><strong>模板+LLM混合</strong>：模板保证基础质量，LLM提供个性化</li>
+                            <li><strong>上下文感知</strong>：可融入时段、天气等实时因素</li>
+                            <li><strong>可解释性</strong>：保留preference_tags便于后续解释</li>
+                        </ul>
+                    </div>
+                `
+            },
+            2: {
+                title: "🔢 Step 2: 用户向量化 (Embedding)",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>将用户画像的自然语言描述转化为高维向量，使其可与商品向量进行数学比较。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>🧠 Embedding原理</h3>
+                        <div class="concept-card">
+                            <div class="concept-title">什么是Text Embedding?</div>
+                            <p>将文本映射到高维向量空间，语义相似的文本在向量空间中距离更近。</p>
+                            <div class="vector-visual">
+                                <div class="vector-item">
+                                    <span class="text">"咖啡爱好者"</span>
+                                    <span class="arrow">→</span>
+                                    <span class="vector">[0.12, -0.34, 0.56, ..., 0.78]</span>
+                                </div>
+                                <div class="vector-item">
+                                    <span class="text">"美式咖啡"</span>
+                                    <span class="arrow">→</span>
+                                    <span class="vector">[0.15, -0.31, 0.52, ..., 0.81]</span>
+                                </div>
+                                <div class="similarity">余弦相似度: 0.92 ✓ 高度相似</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>⚙️ 技术实现</h3>
+                        <div class="tech-stack">
+                            <div class="tech-item">
+                                <div class="tech-name">模型</div>
+                                <div class="tech-value">OpenAI text-embedding-3-small</div>
+                            </div>
+                            <div class="tech-item">
+                                <div class="tech-name">向量维度</div>
+                                <div class="tech-value">1536维</div>
+                            </div>
+                            <div class="tech-item">
+                                <div class="tech-name">API调用</div>
+                                <div class="tech-value">~50-100ms / 次</div>
+                            </div>
+                        </div>
+
+                        <div class="code-block">
+# Python 实现
+from openai import OpenAI
+
+client = OpenAI()
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input="喜欢浓郁口感的经典咖啡，追求提神效果"
+)
+user_vector = response.data[0].embedding
+# => [0.012, -0.034, 0.056, ...] (1536维)
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📦 商品向量预计算</h3>
+                        <p>为提升性能，所有商品的Embedding在启动时预计算并缓存：</p>
+                        <div class="cache-diagram">
+                            <div class="cache-item">
+                                <span class="sku">COF001</span>
+                                <span class="name">美式咖啡</span>
+                                <span class="desc">"经典美式，浓郁咖啡香..."</span>
+                                <span class="vector">[1536维向量]</span>
+                            </div>
+                            <div class="cache-item">
+                                <span class="sku">COF002</span>
+                                <span class="name">拿铁</span>
+                                <span class="desc">"醇厚拿铁，丝滑奶泡..."</span>
+                                <span class="vector">[1536维向量]</span>
+                            </div>
+                            <div class="cache-info">💾 缓存至 app/cache/embeddings.pkl</div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 性能优化</h3>
+                        <ul>
+                            <li><strong>冷启动优化</strong>：首次启动预计算所有商品向量(~10s)</li>
+                            <li><strong>增量更新</strong>：菜单变更时只重算新增商品</li>
+                            <li><strong>批量请求</strong>：多个文本可批量发送减少API调用</li>
+                        </ul>
+                    </div>
+                `
+            },
+            3: {
+                title: "🔍 Step 3: 语义召回 (Semantic Retrieval)",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>通过向量相似度计算，从全部商品中召回与用户偏好最匹配的候选集。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📐 余弦相似度计算</h3>
+                        <div class="formula-card">
+                            <div class="formula">
+                                cos(θ) = (A · B) / (||A|| × ||B||)
+                            </div>
+                            <div class="formula-explain">
+                                <p>• <strong>A · B</strong>：用户向量与商品向量的点积</p>
+                                <p>• <strong>||A||, ||B||</strong>：向量的L2范数（长度）</p>
+                                <p>• <strong>结果范围</strong>：[-1, 1]，越接近1表示越相似</p>
+                            </div>
+                        </div>
+
+                        <div class="code-block">
+import numpy as np
+
+def cosine_similarity(vec_a, vec_b):
+    dot_product = np.dot(vec_a, vec_b)
+    norm_a = np.linalg.norm(vec_a)
+    norm_b = np.linalg.norm(vec_b)
+    return dot_product / (norm_a * norm_b)
+
+# 示例
+user_vec = [0.12, -0.34, 0.56, ...]  # 1536维
+item_vec = [0.15, -0.31, 0.52, ...]  # 1536维
+similarity = cosine_similarity(user_vec, item_vec)
+# => 0.847
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>🔄 召回流程</h3>
+                        <div class="retrieval-flow">
+                            <div class="retrieval-step">
+                                <div class="step-icon">📊</div>
+                                <div class="step-content">
+                                    <strong>遍历全部商品</strong>
+                                    <p>计算用户向量与每个商品向量的余弦相似度</p>
+                                </div>
+                            </div>
+                            <div class="retrieval-step">
+                                <div class="step-icon">📈</div>
+                                <div class="step-content">
+                                    <strong>相似度排序</strong>
+                                    <p>按相似度降序排列所有商品</p>
+                                </div>
+                            </div>
+                            <div class="retrieval-step">
+                                <div class="step-icon">🎯</div>
+                                <div class="step-content">
+                                    <strong>Top-K截断</strong>
+                                    <p>取前K个作为候选集（默认K=20）</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📋 召回结果示例</h3>
+                        <table class="result-table">
+                            <tr><th>排名</th><th>商品</th><th>相似度</th><th>说明</th></tr>
+                            <tr><td>1</td><td>美式咖啡</td><td>0.892</td><td class="match">✓ 经典咖啡，高度匹配</td></tr>
+                            <tr><td>2</td><td>冷萃咖啡</td><td>0.867</td><td class="match">✓ 浓郁口感</td></tr>
+                            <tr><td>3</td><td>拿铁</td><td>0.834</td><td class="match">✓ 咖啡基底</td></tr>
+                            <tr><td>...</td><td>...</td><td>...</td><td>...</td></tr>
+                            <tr><td>18</td><td>草莓星冰乐</td><td>0.423</td><td class="weak">△ 相关度较低</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 为什么用语义召回?</h3>
+                        <ul>
+                            <li><strong>理解语义</strong>："提神醒脑" 能匹配 "咖啡因含量高"</li>
+                            <li><strong>跨语言</strong>：中英文描述都能正确匹配</li>
+                            <li><strong>泛化能力</strong>：即使用户输入训练集中没有的表述也能理解</li>
+                        </ul>
+                    </div>
+                `
+            },
+            4: {
+                title: "⚖️ Step 4: 多因素重排序 (Re-ranking)",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>在语义召回的基础上，融合业务规则、用户行为、上下文等多维因素进行精排。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📊 最终得分公式</h3>
+                        <div class="formula-card large">
+                            <div class="formula">
+                                Final_Score = Embedding_Sim × Rule × Behavior × Session × Context
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>🔧 各因子详解</h3>
+
+                        <div class="factor-detail">
+                            <div class="factor-header">
+                                <span class="factor-icon">📐</span>
+                                <span class="factor-name">Embedding相似度 (基础分)</span>
+                            </div>
+                            <div class="factor-body">
+                                <p>来自Step 3的余弦相似度，范围[0,1]</p>
+                                <div class="example">例：美式咖啡 = 0.892</div>
+                            </div>
+                        </div>
+
+                        <div class="factor-detail">
+                            <div class="factor-header">
+                                <span class="factor-icon">📋</span>
+                                <span class="factor-name">规则乘数 (Rule Multiplier)</span>
+                            </div>
+                            <div class="factor-body">
+                                <p>基于业务规则的加权：</p>
+                                <ul>
+                                    <li>🆕 新品/季节限定：×1.2</li>
+                                    <li>⭐ 标签匹配度：×1.0~1.3</li>
+                                    <li>📦 库存紧张：×0.8</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="factor-detail">
+                            <div class="factor-header">
+                                <span class="factor-icon">📈</span>
+                                <span class="factor-name">行为乘数 (Behavior Multiplier)</span>
+                            </div>
+                            <div class="factor-body">
+                                <p>基于用户历史订单的偏好加权：</p>
+                                <div class="code-block" style="font-size: 11px;">
+# 时间衰减公式 (半衰期30天)
+decay = 0.5 ^ (days_ago / 30)
+boost = 1 + Σ(order_weight × decay)
+
+# 示例：7天前买过美式
+decay = 0.5^(7/30) = 0.85
+boost = 1 + 0.1×0.85 = 1.085
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="factor-detail">
+                            <div class="factor-header">
+                                <span class="factor-icon">🎯</span>
+                                <span class="factor-name">会话乘数 (Session Multiplier)</span>
+                            </div>
+                            <div class="factor-body">
+                                <p>基于当前Session的实时交互：</p>
+                                <ul>
+                                    <li>👍 点赞商品标签：+5%</li>
+                                    <li>👎 点踩商品标签：-5%</li>
+                                    <li>🛒 加购商品标签：+8%</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="factor-detail">
+                            <div class="factor-header">
+                                <span class="factor-icon">🌍</span>
+                                <span class="factor-name">上下文乘数 (Context Multiplier) - MOP</span>
+                            </div>
+                            <div class="factor-body">
+                                <p>基于MOP场景的实时上下文：</p>
+                                <table class="mini-table">
+                                    <tr><td>⏰ 时段</td><td>早晨咖啡+15%</td></tr>
+                                    <tr><td>🌡️ 天气</td><td>高温冰饮+20%</td></tr>
+                                    <tr><td>📍 门店</td><td>热销商品+10%</td></tr>
+                                    <tr><td>🎯 场景</td><td>上班族提神+15%</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📋 重排结果示例</h3>
+                        <div class="rerank-example">
+                            <div class="rerank-item">
+                                <span class="rank">1→1</span>
+                                <span class="name">美式咖啡</span>
+                                <span class="calc">0.892 × 1.2 × 1.08 × 1.0 × 1.15 = <strong>1.33</strong></span>
+                            </div>
+                            <div class="rerank-item boosted">
+                                <span class="rank">5→2</span>
+                                <span class="name">冷萃咖啡</span>
+                                <span class="calc">0.823 × 1.3 × 1.15 × 1.05 × 1.20 = <strong>1.55</strong> ↑</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 A/B实验</h3>
+                        <p>各因子的权重通过A/B测试持续优化：</p>
+                        <ul>
+                            <li><strong>context_weight</strong>：低/中/高权重对比</li>
+                            <li><strong>weather_adaptation</strong>：天气适配策略对比</li>
+                        </ul>
+                    </div>
+                `
+            },
+            5: {
+                title: "📊 Step 2.1: 客制化偏好分析",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>基于用户历史订单，构建个人客制化偏好模型，为后续属性推荐提供数据支撑。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📋 输入数据</h3>
+                        <div class="code-block">
+{
+  "user_id": "user_abc123",
+  "order_history": [
+    {
+      "item": "拿铁",
+      "temperature": "iced",
+      "size": "grande",
+      "milk": "oat_milk",
+      "sugar": "less_sweet",
+      "espresso_shots": 2,
+      "timestamp": "2024-01-15T09:30:00"
+    },
+    // ... 更多历史订单
+  ],
+  "preset_preferences": {
+    "default_temperature": "iced",
+    "default_milk": "oat_milk"
+  }
+}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>⚙️ 偏好分析流程</h3>
+                        <div class="flow-diagram">
+                            <div class="flow-step">
+                                <div class="flow-num">1</div>
+                                <div class="flow-content">
+                                    <strong>历史订单聚合</strong>
+                                    <p>统计各客制化属性的使用频率：</p>
+                                    <ul>
+                                        <li>温度：冰 72% / 热 28%</li>
+                                        <li>奶类：燕麦奶 60% / 全脂 25% / 脱脂 15%</li>
+                                        <li>糖度：少糖 55% / 标准 30% / 无糖 15%</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="flow-step">
+                                <div class="flow-num">2</div>
+                                <div class="flow-content">
+                                    <strong>时间衰减加权</strong>
+                                    <p>近期订单权重更高 (30天半衰期)</p>
+                                    <div class="code-block" style="font-size: 11px;">
+weight = exp(-days_ago / 30)
+# 1天前: 0.97, 30天前: 0.37, 90天前: 0.05
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flow-step">
+                                <div class="flow-num">3</div>
+                                <div class="flow-content">
+                                    <strong>偏好置信度评估</strong>
+                                    <p>根据样本量评估偏好可信度</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📤 输出：用户偏好模型</h3>
+                        <div class="code-block">
+{
+  "preferences": {
+    "temperature": {"value": "iced", "confidence": 0.85},
+    "milk": {"value": "oat_milk", "confidence": 0.72},
+    "sugar": {"value": "less_sweet", "confidence": 0.68},
+    "espresso": {"value": "double", "confidence": 0.55}
+  },
+  "keywords": ["清爽", "低糖", "燕麦"],
+  "sample_size": 23
+}
+                        </div>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 设计要点</h3>
+                        <ul>
+                            <li><strong>冷启动处理</strong>：新用户采用画像默认值或热门配置</li>
+                            <li><strong>上下文融合</strong>：夏季自动提升冰饮偏好权重</li>
+                            <li><strong>置信度阈值</strong>：低置信度偏好不强推，给用户选择空间</li>
+                        </ul>
+                    </div>
+                `
+            },
+            6: {
+                title: "🎯 Step 2.2: 客制化属性推荐",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>为每个推荐商品生成最适合用户的客制化配置建议。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📋 输入数据</h3>
+                        <div class="code-block">
+{
+  "recommended_item": {
+    "sku": "COF001",
+    "name": "拿铁",
+    "available_options": {
+      "temperature": ["hot", "iced"],
+      "size": ["tall", "grande", "venti"],
+      "milk": ["whole", "skim", "oat_milk", "almond"],
+      "sugar": ["standard", "less_sweet", "no_sugar"],
+      "espresso": [1, 2, 3]
+    }
+  },
+  "user_preferences": { /* 来自Step 2.1 */ },
+  "context": {
+    "weather": {"temp": 32, "condition": "hot"},
+    "time_of_day": "afternoon"
+  }
+}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>⚙️ 推荐算法</h3>
+                        <div class="algorithm-card">
+                            <div class="algo-title">多因素融合推荐</div>
+                            <div class="algo-formula">
+                                <strong>属性得分</strong> = 用户偏好 × 0.5 + 上下文适配 × 0.3 + 商品适配 × 0.2
+                            </div>
+                            <div class="algo-examples">
+                                <div class="example-item">
+                                    <span class="attr">🧊 温度推荐：冰</span>
+                                    <span class="calc">= 偏好(冰:0.85) × 0.5 + 高温天气(0.9) × 0.3 + 商品支持(1.0) × 0.2</span>
+                                    <span class="score">= 0.90</span>
+                                </div>
+                                <div class="example-item">
+                                    <span class="attr">🥛 奶类推荐：燕麦奶</span>
+                                    <span class="calc">= 偏好(燕麦:0.72) × 0.5 + 健康趋势(0.6) × 0.3 + 商品适配(0.8) × 0.2</span>
+                                    <span class="score">= 0.70</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>🏪 门店库存约束</h3>
+                        <p>推荐配置需考虑门店实际库存状态：</p>
+                        <div class="inventory-check">
+                            <div class="inv-item available">
+                                <span class="icon">✓</span>
+                                <span class="name">燕麦奶</span>
+                                <span class="status">库存充足</span>
+                            </div>
+                            <div class="inv-item low">
+                                <span class="icon">⚠️</span>
+                                <span class="name">杏仁奶</span>
+                                <span class="status">库存紧张</span>
+                            </div>
+                            <div class="inv-item out">
+                                <span class="icon">✗</span>
+                                <span class="name">椰奶</span>
+                                <span class="status">暂时缺货 → 推荐替代</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📤 输出：推荐配置</h3>
+                        <div class="code-block">
+{
+  "recommended_config": {
+    "temperature": "iced",
+    "size": "grande",
+    "milk": "oat_milk",
+    "sugar": "less_sweet",
+    "espresso_shots": 2
+  },
+  "config_reasons": {
+    "temperature": "您偏好冰饮，且今天天气炎热",
+    "milk": "根据您的燕麦奶偏好",
+    "sugar": "保持您一贯的少糖选择"
+  },
+  "alternatives": {
+    "milk": ["almond", "skim"]  // 备选方案
+  }
+}
+                        </div>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 用户体验设计</h3>
+                        <ul>
+                            <li><strong>一键下单</strong>：推荐配置可直接加入购物车</li>
+                            <li><strong>可修改</strong>：用户可调整任意属性</li>
+                            <li><strong>记忆反馈</strong>：用户修改后更新偏好模型</li>
+                        </ul>
+                    </div>
+                `
+            },
+            7: {
+                title: "💬 Step 2.3: 个性化理由生成",
+                content: `
+                    <div class="detail-section">
+                        <h3>🎯 核心目标</h3>
+                        <p>为推荐的商品+客制化配置组合生成个性化推荐理由，提升用户信任度和转化率。</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>🤖 LLM生成流程</h3>
+                        <div class="llm-flow">
+                            <div class="llm-step">
+                                <div class="step-label">输入</div>
+                                <div class="code-block" style="font-size: 11px;">
+{
+  "user_type": "咖啡重度用户",
+  "item_name": "冷萃咖啡",
+  "customization": {
+    "temperature": "iced",
+    "milk": "oat_milk",
+    "sugar": "less_sweet"
+  },
+  "match_factors": {
+    "semantic": 0.87,
+    "behavior": 0.75,
+    "context": "高温天气+下午时段"
+  }
+}
+                                </div>
+                            </div>
+                            <div class="llm-arrow">↓ GPT-4o-mini</div>
+                            <div class="llm-step">
+                                <div class="step-label">Prompt模板</div>
+                                <div class="code-block" style="font-size: 11px;">
+你是星巴克的推荐助手。
+请根据以下信息生成简短的推荐理由(30字内)：
+- 用户类型：{user_type}
+- 推荐商品：{item_name}
+- 客制化配置：{customization}
+- 推荐原因：{match_factors}
+要求：亲切、个性化、突出商品+配置的特点
+                                </div>
+                            </div>
+                            <div class="llm-arrow">↓</div>
+                            <div class="llm-step">
+                                <div class="step-label">输出</div>
+                                <div class="reason-output">
+                                    "☀️ 炎热午后，为您准备冰爽冷萃配燕麦奶，少糖更健康，正是您喜欢的口味！"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>📊 可解释性因子分解</h3>
+                        <p>除了LLM生成的文案，还提供结构化的解释数据：</p>
+                        <div class="explainability-card">
+                            <div class="explain-item">
+                                <div class="explain-label">语义匹配</div>
+                                <div class="explain-bar"><div class="bar-fill" style="width: 87%"></div></div>
+                                <div class="explain-value">87%</div>
+                            </div>
+                            <div class="explain-item">
+                                <div class="explain-label">行为偏好</div>
+                                <div class="explain-bar"><div class="bar-fill" style="width: 75%"></div></div>
+                                <div class="explain-value">75%</div>
+                            </div>
+                            <div class="explain-item">
+                                <div class="explain-label">客制化匹配</div>
+                                <div class="explain-bar"><div class="bar-fill" style="width: 90%"></div></div>
+                                <div class="explain-value">90%</div>
+                            </div>
+                            <div class="explain-item">
+                                <div class="explain-label">上下文适配</div>
+                                <div class="explain-bar"><div class="bar-fill" style="width: 80%"></div></div>
+                                <div class="explain-value">80%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>🎨 理由风格A/B测试</h3>
+                        <table class="style-table">
+                            <tr>
+                                <th>风格</th>
+                                <th>示例</th>
+                                <th>适用场景</th>
+                            </tr>
+                            <tr>
+                                <td>简洁型</td>
+                                <td>"根据您的口味偏好推荐"</td>
+                                <td>效率优先用户</td>
+                            </tr>
+                            <tr>
+                                <td>情感型</td>
+                                <td>"这杯咖啡的香气，配上您喜欢的燕麦奶~"</td>
+                                <td>情感共鸣用户</td>
+                            </tr>
+                            <tr>
+                                <td>数据型</td>
+                                <td>"基于23次历史订单的个性化配置"</td>
+                                <td>理性决策用户</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="detail-section highlight">
+                        <h3>💡 工程优化</h3>
+                        <ul>
+                            <li><strong>批量生成</strong>：一次API调用生成多个商品的理由</li>
+                            <li><strong>缓存策略</strong>：相同Persona+商品+配置组合缓存理由</li>
+                            <li><strong>降级方案</strong>：LLM超时时使用模板生成</li>
+                        </ul>
+                    </div>
+                `
+            }
+        };
+
+        function showAlgorithmDetail(stepNum) {
+            currentDetailStep = stepNum;
+            const modal = document.getElementById('algorithmModal');
+            const title = document.getElementById('algorithmModalTitle');
+            const body = document.getElementById('algorithmModalBody');
+
+            const detail = algorithmDetails[stepNum];
+            if (detail) {
+                title.textContent = detail.title;
+                body.innerHTML = detail.content;
+            }
+
+            updateStepNavigation();
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAlgorithmModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const modal = document.getElementById('algorithmModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        function navigateStep(delta) {
+            const newStep = currentDetailStep + delta;
+            if (newStep >= 1 && newStep <= 7) {
+                showAlgorithmDetail(newStep);
+            }
+        }
+
+        function updateStepNavigation() {
+            document.getElementById('stepIndicator').textContent = `${currentDetailStep} / 7`;
+            document.getElementById('btnPrevStep').disabled = currentDetailStep <= 1;
+            document.getElementById('btnNextStep').disabled = currentDetailStep >= 7;
+        }
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAlgorithmModal();
+            if (e.key === 'ArrowLeft') navigateStep(-1);
+            if (e.key === 'ArrowRight') navigateStep(1);
+        });
     </script>
 </body>
 </html>

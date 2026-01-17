@@ -155,9 +155,26 @@ templates = Jinja2Templates(directory="app/templates")
 user_preferences: dict[str, UserPreference] = {}
 
 
+# ============ 健康检查 ============
+@app.get("/api/health")
+async def health_check():
+    """健康检查端点 - 用于 CloudBase 容器健康检查"""
+    return {
+        "status": "healthy",
+        "service": "starbucks-recommendation",
+        "version": "1.0.0"
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """首页"""
+    """首页 - 智能推荐演示"""
+    return templates.TemplateResponse("embedding_demo_v2.html", {"request": request})
+
+
+@app.get("/classic", response_class=HTMLResponse)
+async def classic_menu(request: Request):
+    """经典菜单页面"""
     return templates.TemplateResponse("index.html", {"request": request})
 
 
@@ -846,8 +863,9 @@ async def apply_preset_to_item(preset_id: str, item_sku: str):
 
 @app.get("/embedding-v2", response_class=HTMLResponse)
 async def embedding_demo_v2(request: Request):
-    """增强版Embedding推荐演示页面"""
-    return templates.TemplateResponse("embedding_demo_v2.html", {"request": request})
+    """增强版Embedding推荐演示页面 (兼容旧路径，重定向到首页)"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/", status_code=301)
 
 
 @app.get("/presentation", response_class=HTMLResponse)
@@ -867,6 +885,44 @@ async def get_cart(session_id: str):
     return cart.model_dump()
 
 
+def _normalize_customization(cust_dict: dict) -> dict:
+    """将英文枚举名转换为中文值"""
+    if not cust_dict:
+        return cust_dict
+
+    # 枚举映射表
+    mappings = {
+        "cup_size": {
+            "TALL": "中杯", "GRANDE": "大杯", "VENTI": "超大杯"
+        },
+        "temperature": {
+            "EXTRA_HOT": "特别热", "HOT": "热", "WARM": "微热",
+            "ICED": "冰", "LESS_ICE": "少冰", "NO_ICE": "去冰", "FULL_ICE": "全冰"
+        },
+        "sugar_level": {
+            "FULL": "经典糖", "ZERO_CAL": "0热量代糖", "NONE": "不另外加糖",
+            "LESS": "少甜", "STANDARD": "标准甜"
+        },
+        "milk_type": {
+            "WHOLE": "全脂牛奶", "SKIM": "脱脂牛奶", "OAT": "燕麦奶",
+            "ALMOND": "巴旦木奶", "SOY": "豆奶", "COCONUT": "椰奶", "NONE": "不加奶"
+        },
+        "whipped_cream": {
+            "NONE": "不加奶油", "LIGHT": "加少量搅打稀奶油", "STANDARD": "加标准搅打稀奶油",
+            True: "加标准搅打稀奶油", False: "不加奶油",
+            "true": "加标准搅打稀奶油", "false": "不加奶油"
+        }
+    }
+
+    normalized = {}
+    for key, value in cust_dict.items():
+        if key in mappings and value in mappings[key]:
+            normalized[key] = mappings[key][value]
+        else:
+            normalized[key] = value
+    return normalized
+
+
 @app.post("/api/cart/add")
 async def add_to_cart(request: dict):
     """添加商品到购物车"""
@@ -876,7 +932,8 @@ async def add_to_cart(request: dict):
     # 构建请求对象
     customization = None
     if request.get("customization"):
-        customization = Customization(**request["customization"])
+        normalized = _normalize_customization(request["customization"])
+        customization = Customization(**normalized)
 
     add_request = AddToCartRequest(
         session_id=request["session_id"],
@@ -898,7 +955,8 @@ async def update_cart_item(session_id: str, item_id: str, request: dict):
 
     customization = None
     if request.get("customization"):
-        customization = Customization(**request["customization"])
+        normalized = _normalize_customization(request["customization"])
+        customization = Customization(**normalized)
 
     update_request = UpdateCartItemRequest(
         quantity=request.get("quantity"),
@@ -972,6 +1030,618 @@ async def get_cart_stats():
     from app.cart_service import cart_service
 
     return await cart_service.get_order_stats_async()
+
+
+# ============ MOP门店与上下文API ============
+
+@app.get("/api/stores")
+async def get_stores(city: str = None, store_type: str = None):
+    """获取门店列表"""
+    from app.context_service import store_service, StoreType
+
+    if city:
+        stores = store_service.get_stores_by_city(city)
+    elif store_type:
+        try:
+            st = StoreType(store_type)
+            stores = store_service.get_stores_by_type(st)
+        except ValueError:
+            stores = store_service.get_all_stores()
+    else:
+        stores = store_service.get_all_stores()
+
+    # 添加繁忙信息
+    result = []
+    for store in stores:
+        store_data = dict(store)
+        store_data["store_type"] = store_data["store_type"].value if hasattr(store_data["store_type"], 'value') else store_data["store_type"]
+        busy_info = store_service.get_store_busy_level(store["store_id"])
+        store_data["busy_level"] = busy_info["level"].value if hasattr(busy_info["level"], 'value') else busy_info["level"]
+        store_data["wait_minutes"] = busy_info["wait_minutes"]
+        result.append(store_data)
+
+    return {"stores": result, "count": len(result)}
+
+
+@app.get("/api/stores/nearby")
+async def get_nearby_stores(lat: float, lon: float, limit: int = 5):
+    """获取附近门店"""
+    from app.context_service import store_service
+
+    stores = store_service.get_nearby_stores(lat, lon, limit)
+
+    result = []
+    for store in stores:
+        store_data = dict(store)
+        store_data["store_type"] = store_data["store_type"].value if hasattr(store_data["store_type"], 'value') else store_data["store_type"]
+        busy_info = store_service.get_store_busy_level(store["store_id"])
+        store_data["busy_level"] = busy_info["level"].value if hasattr(busy_info["level"], 'value') else busy_info["level"]
+        store_data["wait_minutes"] = busy_info["wait_minutes"]
+        result.append(store_data)
+
+    return {"stores": result, "count": len(result)}
+
+
+@app.get("/api/stores/{store_id}")
+async def get_store_detail(store_id: str):
+    """获取门店详情与库存"""
+    from app.context_service import store_service
+
+    store = store_service.get_store(store_id)
+    if not store:
+        return {"error": "门店不存在"}
+
+    store_data = dict(store)
+    store_data["store_type"] = store_data["store_type"].value if hasattr(store_data["store_type"], 'value') else store_data["store_type"]
+
+    # 繁忙程度
+    busy_info = store_service.get_store_busy_level(store_id)
+    store_data["busy_level"] = busy_info["level"].value if hasattr(busy_info["level"], 'value') else busy_info["level"]
+    store_data["wait_minutes"] = busy_info["wait_minutes"]
+
+    # 库存
+    inventory = store_service.get_store_inventory(store_id)
+    store_data["inventory"] = {
+        sku: level.value if hasattr(level, 'value') else level
+        for sku, level in inventory.items()
+    }
+
+    return store_data
+
+
+@app.get("/api/context/current")
+async def get_current_context(store_id: str = None, weather: str = None, scenario: str = None):
+    """获取当前完整上下文"""
+    from app.context_service import context_service
+
+    context = context_service.get_current_context(
+        store_id=store_id,
+        weather_override=weather,
+        scenario_override=scenario
+    )
+
+    return context
+
+
+@app.get("/api/context/scenarios")
+async def get_scenarios():
+    """获取所有可用场景"""
+    from app.context_service import scenario_service
+
+    scenarios = scenario_service.get_all_scenarios()
+    return {"scenarios": scenarios, "count": len(scenarios)}
+
+
+class SimulateContextRequest(BaseModel):
+    """模拟上下文请求"""
+    time_of_day: Optional[str] = None
+    weather: Optional[str] = None
+    store_id: Optional[str] = None
+    scenario_id: Optional[str] = None
+    day_type: Optional[str] = None
+    season: Optional[str] = None
+
+
+@app.post("/api/context/simulate")
+async def simulate_context(request: SimulateContextRequest):
+    """模拟上下文（用于演示）"""
+    from app.context_service import context_service
+
+    context = context_service.simulate_context(
+        time_of_day=request.time_of_day,
+        weather=request.weather,
+        store_id=request.store_id,
+        scenario_id=request.scenario_id,
+        day_type=request.day_type,
+        season=request.season
+    )
+
+    return context
+
+
+@app.get("/api/weather")
+async def get_weather(city: str = "上海"):
+    """获取城市天气"""
+    from app.context_service import weather_service
+
+    weather = weather_service.get_weather(city)
+    return weather
+
+
+@app.get("/api/weather/options")
+async def get_weather_options():
+    """获取可模拟的天气选项"""
+    from app.context_service import WEATHER_CONDITIONS
+
+    options = []
+    for key, config in WEATHER_CONDITIONS.items():
+        options.append({
+            "id": key,
+            "icon": config["icon"],
+            "description": config["description"],
+            "temperature": config["temperature"]
+        })
+
+    return {"options": options}
+
+
+# ============ 转化漏斗API ============
+
+class ConversionEventRequest(BaseModel):
+    """转化事件请求"""
+    user_id: str
+    session_id: str
+    event_type: str  # impression, click, add_to_cart, order
+    item_sku: Optional[str] = None
+    store_id: Optional[str] = None
+    experiment_id: Optional[str] = None
+    variant: Optional[str] = None
+    context: Optional[dict] = None
+
+
+@app.post("/api/conversion/event")
+async def record_conversion_event(request: ConversionEventRequest):
+    """记录转化漏斗事件"""
+    from app.experiment_service import conversion_funnel_service
+
+    result = await conversion_funnel_service.record_event_async(
+        user_id=request.user_id,
+        session_id=request.session_id,
+        event_type=request.event_type,
+        item_sku=request.item_sku,
+        store_id=request.store_id,
+        experiment_id=request.experiment_id,
+        variant=request.variant,
+        context=request.context
+    )
+
+    return result
+
+
+@app.get("/api/conversion/funnel")
+async def get_conversion_funnel(
+    start_date: str = None,
+    end_date: str = None,
+    experiment_id: str = None,
+    variant: str = None
+):
+    """获取转化漏斗数据"""
+    from app.experiment_service import conversion_funnel_service
+
+    stats = await conversion_funnel_service.get_funnel_stats_async(
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        variant=variant
+    )
+
+    return stats
+
+
+@app.get("/api/conversion/by-context/{dimension_type}")
+async def get_conversion_by_context(
+    dimension_type: str,
+    start_date: str = None,
+    end_date: str = None
+):
+    """获取按上下文维度的转化统计"""
+    from app.experiment_service import conversion_funnel_service
+
+    metrics = await conversion_funnel_service.get_context_metrics_async(
+        dimension_type=dimension_type,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    return metrics
+
+
+@app.get("/api/conversion/ab-analysis/{experiment_id}")
+async def get_ab_experiment_analysis(experiment_id: str):
+    """获取A/B实验分析结果"""
+    from app.experiment_service import conversion_funnel_service
+
+    analysis = await conversion_funnel_service.get_ab_analysis_async(experiment_id)
+    return analysis
+
+
+@app.post("/api/conversion/simulate")
+async def simulate_conversion_data(days: int = 7, events_per_day: int = 100):
+    """模拟转化漏斗数据（用于演示）"""
+    from app.experiment_service import conversion_funnel_service
+
+    result = await conversion_funnel_service.simulate_data_async(
+        days=days,
+        events_per_day=events_per_day
+    )
+
+    return result
+
+
+# ============ V3增强推荐API ============
+
+class EmbeddingRecommendV3Request(BaseModel):
+    """V3场景化推荐请求"""
+    persona_type: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    store_id: Optional[str] = None
+    custom_tags: Optional[list[str]] = None
+    context: Optional[dict] = None
+    weather_override: Optional[str] = None
+    scenario_override: Optional[str] = None
+    top_k: int = 6
+    use_llm_for_reasons: bool = True
+    enable_ab_test: bool = True
+    enable_behavior: bool = True
+    enable_session: bool = True
+    enable_explainability: bool = True
+    enable_context: bool = True
+
+
+@app.post("/api/embedding/recommend/v3")
+async def embedding_recommend_v3(request: EmbeddingRecommendV3Request):
+    """
+    V3 MOP场景化推荐
+
+    完整上下文因子:
+    - 门店选择与库存状态
+    - 天气适配推荐
+    - 场景化推荐
+    - 完整上下文因子可视化
+    """
+    result = embedding_recommendation_engine.recommend_v3(
+        persona_type=request.persona_type,
+        user_id=request.user_id,
+        session_id=request.session_id,
+        store_id=request.store_id,
+        custom_tags=request.custom_tags,
+        context=request.context,
+        weather_override=request.weather_override,
+        scenario_override=request.scenario_override,
+        top_k=request.top_k,
+        use_llm_for_reasons=request.use_llm_for_reasons,
+        enable_ab_test=request.enable_ab_test,
+        enable_behavior=request.enable_behavior,
+        enable_session=request.enable_session,
+        enable_explainability=request.enable_explainability,
+        enable_context=request.enable_context
+    )
+
+    return result
+
+
+# ============ AI点单推荐API ============
+
+class AIOrderingConstraints(BaseModel):
+    """AI点单硬约束"""
+    caffeine_free: Optional[bool] = None  # 无咖啡因
+    low_calorie: Optional[bool] = None  # 低卡(<100卡)
+    dairy_free: Optional[bool] = None  # 无乳制品
+    max_price: Optional[float] = None  # 最高价格
+    categories: Optional[list[str]] = None  # 限定品类
+    exclude_categories: Optional[list[str]] = None  # 排除品类
+    temperature_only: Optional[str] = None  # 仅限温度 hot/iced
+
+
+class AIOrderingRequest(BaseModel):
+    """AI点单推荐请求"""
+    user_id: str
+    query: str  # 用户自然语言描述
+    store_id: Optional[str] = None
+    session_id: Optional[str] = None
+    constraints: Optional[AIOrderingConstraints] = None
+    top_k: int = 2
+    context_override: Optional[dict] = None  # 上下文覆盖
+    include_alternatives: bool = True  # 是否包含备选
+
+
+def calculate_recommendation_confidence(rec: dict) -> float:
+    """计算推荐置信度"""
+    breakdown = rec.get("score_breakdown", {})
+    semantic_score = rec.get("similarity_score", 0.5)
+
+    # 各因子权重
+    weights = {"semantic": 0.35, "behavior": 0.25, "context": 0.20, "customization": 0.20}
+
+    # 行为匹配度
+    behavior_mult = breakdown.get("behavior_multiplier", 1.0)
+    behavior_score = min(1.0, (behavior_mult - 0.8) / 0.4) if behavior_mult > 0.8 else 0.5
+
+    # 上下文匹配度
+    context_factors = breakdown.get("context_factors", {})
+    context_score = 0.5
+    if context_factors:
+        time_factor = context_factors.get("time_factor", {}).get("value", 1.0)
+        weather_factor = context_factors.get("weather_factor", {}).get("value", 1.0)
+        context_score = min(1.0, (time_factor + weather_factor - 1.6) / 0.8)
+
+    # 客制化匹配度
+    cust_mult = breakdown.get("customization_multiplier", 1.0)
+    cust_score = min(1.0, (cust_mult - 0.8) / 0.4) if cust_mult > 0.8 else 0.5
+
+    confidence = (
+        weights["semantic"] * semantic_score +
+        weights["behavior"] * behavior_score +
+        weights["context"] * context_score +
+        weights["customization"] * cust_score
+    )
+    return round(min(1.0, max(0.0, confidence)), 3)
+
+
+def apply_ai_ordering_constraints(items: list, constraints: AIOrderingConstraints) -> list:
+    """应用AI点单硬约束过滤"""
+    if not constraints:
+        return items
+
+    filtered = []
+    for item in items:
+        item_data = item.get("item", {})
+        tags = [t.lower() for t in item_data.get("tags", [])]
+        category = item_data.get("category", "").lower()
+        calories = item_data.get("calories", 0)
+        base_price = item_data.get("base_price", 0)
+        available_temps = item_data.get("available_temperatures", [])
+
+        # 无咖啡因约束
+        if constraints.caffeine_free:
+            # 排除咖啡类
+            if category == "咖啡":
+                continue
+            # 检查描述中是否含咖啡（星冰乐中有些含咖啡）
+            description = item_data.get("description", "").lower()
+            if "咖啡" in description and "无咖啡因" not in description:
+                continue
+            # 检查是否有无咖啡因标签
+            if "咖啡因" in tags and "无咖啡因" not in tags:
+                continue
+
+        # 低卡约束
+        if constraints.low_calorie and calories >= 100:
+            continue
+
+        # 无乳制品约束
+        if constraints.dairy_free:
+            dairy_keywords = ["牛奶", "奶", "乳", "拿铁"]
+            if any(k in item_data.get("name", "") for k in dairy_keywords):
+                continue
+
+        # 最高价格约束
+        if constraints.max_price and base_price > constraints.max_price:
+            continue
+
+        # 品类约束
+        if constraints.categories and category not in [c.lower() for c in constraints.categories]:
+            continue
+
+        # 排除品类
+        if constraints.exclude_categories and category in [c.lower() for c in constraints.exclude_categories]:
+            continue
+
+        # 温度约束
+        if constraints.temperature_only:
+            temp_map = {"hot": ["热", "特别热", "微热"], "iced": ["冰", "少冰", "去冰", "全冰"]}
+            required_temps = temp_map.get(constraints.temperature_only.lower(), [])
+            if required_temps and not any(t in available_temps for t in required_temps):
+                continue
+
+        filtered.append(item)
+
+    return filtered
+
+
+def format_for_ai_ordering(rec: dict, confidence: float) -> dict:
+    """格式化推荐结果供AI点单使用"""
+    item = rec.get("item", {})
+    suggested_cust = rec.get("suggested_customization", {})
+    cust = suggested_cust.get("suggested_customization", {}) if suggested_cust else {}
+
+    return {
+        "product": {
+            "sku": item.get("sku"),
+            "name": item.get("name"),
+            "english_name": item.get("english_name"),
+            "category": item.get("category"),
+            "base_price": item.get("base_price"),
+            "calories": item.get("calories"),
+            "description": item.get("description"),
+            "tags": item.get("tags", []),
+            "is_new": item.get("is_new", False),
+            "is_seasonal": item.get("is_seasonal", False)
+        },
+        "customization": {
+            "temperature": cust.get("temperature"),
+            "cup_size": cust.get("cup_size"),
+            "sugar_level": cust.get("sugar_level"),
+            "milk_type": cust.get("milk_type"),
+            "espresso_shots": cust.get("espresso_shots")
+        },
+        "pricing": {
+            "base_price": item.get("base_price", 0),
+            "adjustment": suggested_cust.get("price_adjustment", 0) if suggested_cust else 0,
+            "final_price": item.get("base_price", 0) + (suggested_cust.get("price_adjustment", 0) if suggested_cust else 0)
+        },
+        "recommendation": {
+            "confidence": confidence,
+            "confidence_level": "high" if confidence >= 0.7 else ("medium" if confidence >= 0.5 else "low"),
+            "reason": rec.get("reason", ""),
+            "reason_highlight": rec.get("reason_highlight", ""),
+            "matched_keywords": rec.get("matched_keywords", [])
+        }
+    }
+
+
+def generate_ai_response(recommendations: list, need_clarification: bool) -> str:
+    """生成建议的AI回复话术"""
+    if need_clarification:
+        return "我还不太确定您想要什么，能告诉我更多吗？比如您喜欢咖啡还是茶饮？"
+
+    if not recommendations:
+        return "抱歉，暂时没有找到符合您要求的饮品。您可以换个描述试试？"
+
+    top = recommendations[0]
+    product = top["product"]
+    cust = top["customization"]
+    pricing = top["pricing"]
+
+    response = f"为您推荐{product['name']}"
+
+    cust_parts = []
+    if cust.get("temperature"):
+        cust_parts.append(cust["temperature"])
+    if cust.get("cup_size"):
+        size_map = {"TALL": "中杯", "GRANDE": "大杯", "VENTI": "超大杯"}
+        cust_parts.append(size_map.get(cust["cup_size"], cust["cup_size"]))
+
+    if cust_parts:
+        response += f"，{'/'.join(cust_parts)}"
+
+    response += f"，{pricing['final_price']}元"
+
+    reason = top["recommendation"].get("reason", "")
+    if reason:
+        response += f"。{reason}"
+
+    if len(recommendations) > 1:
+        alt = recommendations[1]["product"]["name"]
+        response += f" 或者您也可以试试{alt}~"
+
+    return response
+
+
+@app.post("/api/ai-ordering/recommend")
+async def ai_ordering_recommend(request: AIOrderingRequest):
+    """
+    AI点单专用推荐接口
+
+    特点:
+    - 支持自然语言query
+    - 支持硬约束过滤 (无咖啡因、低卡、价格限制等)
+    - 输出包含置信度
+    - 提供建议回复话术
+    - 支持追问判断
+    """
+    # 构建上下文
+    context = request.context_override or {}
+    auto_ctx = get_auto_context()
+    context = {**auto_ctx, **context}
+
+    # 将用户自然语言query转为关键词标签
+    # 例如："来一杯提神的咖啡" -> ["提神", "咖啡"]
+    query_tags = [tag.strip() for tag in request.query.replace("来一杯", "").replace("想要", "").replace("的", " ").replace("，", " ").replace(",", " ").split() if tag.strip()]
+
+    # 调用V3推荐
+    result = embedding_recommendation_engine.recommend_v3(
+        persona_type="咖啡重度用户",  # 默认画像
+        user_id=request.user_id,
+        session_id=request.session_id,
+        store_id=request.store_id,
+        custom_tags=query_tags if query_tags else [request.query],  # 使用解析后的标签或原始query
+        context=context,
+        top_k=max(request.top_k + 3, 6),  # 多获取一些用于过滤
+        use_llm_for_reasons=True,
+        enable_ab_test=True,
+        enable_behavior=True,
+        enable_session=True,
+        enable_explainability=True,
+        enable_context=True
+    )
+
+    recommendations = result.get("recommendations", [])
+
+    # 应用硬约束过滤
+    if request.constraints:
+        recommendations = apply_ai_ordering_constraints(recommendations, request.constraints)
+
+    # 限制数量
+    recommendations = recommendations[:request.top_k]
+
+    # 格式化结果
+    formatted = []
+    for rec in recommendations:
+        confidence = calculate_recommendation_confidence(rec)
+        formatted.append(format_for_ai_ordering(rec, confidence))
+
+    # 判断是否需要追问
+    need_clarification = False
+    clarification_options = []
+
+    if not formatted:
+        need_clarification = True
+        clarification_options = ["您想喝咖啡还是茶饮？", "您有什么口味偏好吗？", "您对价格有要求吗？"]
+    elif formatted[0]["recommendation"]["confidence"] < 0.5:
+        need_clarification = True
+        clarification_options = ["您能描述得更具体一些吗？", "您平时喜欢喝什么类型的饮品？"]
+
+    return {
+        "success": True,
+        "recommendations": formatted,
+        "meta": {
+            "query": request.query,
+            "total_candidates": len(result.get("recommendations", [])),
+            "filtered_count": len(formatted),
+            "constraints_applied": request.constraints.model_dump(exclude_none=True) if request.constraints else {},
+            "context": {
+                "time_period": context.get("time_of_day"),
+                "store_id": request.store_id
+            }
+        },
+        "need_clarification": need_clarification,
+        "clarification_options": clarification_options,
+        "suggested_response": generate_ai_response(formatted, need_clarification)
+    }
+
+
+@app.get("/api/ai-ordering/user-preferences/{user_id}")
+async def ai_ordering_user_preferences(user_id: str):
+    """
+    获取用户历史偏好 - 用于"老样子"场景
+    """
+    from app.experiment_service import BehaviorService
+
+    behavior_service = BehaviorService()
+    profile = behavior_service.get_user_profile(user_id)
+
+    if profile.get("is_new_user", True):
+        return {
+            "success": True,
+            "user_id": user_id,
+            "is_new_user": True,
+            "message": "新用户，暂无历史偏好",
+            "preferences": {}
+        }
+
+    return {
+        "success": True,
+        "user_id": user_id,
+        "is_new_user": False,
+        "preferences": {
+            "top_items": profile.get("top_items", [])[:5],
+            "customization": profile.get("customization_preference", {}),
+            "favorite_categories": profile.get("favorite_categories", []),
+            "order_count": profile.get("order_count", 0)
+        }
+    }
 
 
 # ============ 管理API ============

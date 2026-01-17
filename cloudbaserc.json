@@ -1,0 +1,34 @@
+{
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "version": "2.0",
+  "envId": "{{env.ENV_ID}}",
+  "framework": {
+    "name": "starbucks-rec",
+    "plugins": {
+      "container": {
+        "use": "@cloudbase/framework-plugin-container",
+        "inputs": {
+          "serviceName": "starbucks-rec",
+          "servicePath": "/",
+          "uploadType": "package",
+          "containerPort": 80,
+          "cpu": 1,
+          "mem": 2,
+          "minNum": 0,
+          "maxNum": 10,
+          "policyType": "cpu",
+          "policyThreshold": 60,
+          "envVariables": {
+            "OPENAI_API_KEY": "{{env.OPENAI_API_KEY}}",
+            "LLM_PROVIDER": "openai"
+          },
+          "customLogs": {
+            "enabled": true,
+            "path": "/app/logs"
+          },
+          "initialDelaySeconds": 10
+        }
+      }
+    }
+  }
+}
