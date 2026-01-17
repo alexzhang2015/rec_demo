@@ -35,8 +35,8 @@ RUN mkdir -p /app/app/data /app/app/cache
 # 暴露端口 (CloudBase 默认使用 80)
 EXPOSE 80
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# 健康检查 (增加启动等待时间，首次需要生成 embedding)
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=5 \
     CMD curl -f http://localhost:80/api/health || exit 1
 
 # 启动命令
